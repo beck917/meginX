@@ -1,7 +1,7 @@
 /* 
  * File:   main.c
  * Author: Beck Xu
- * 一个不相干的算法...
+ * 一个不相干的算法... 
  * Created on 2014年5月12日, 下午5:11
  */
 
@@ -9,7 +9,7 @@
 1 2 4 7 
 3 5 8 11 
 6 9 12 14 
-10 13 15 16
+10 13 15 16 
  */
 #include <stdio.h>
 #include <stdlib.h>
