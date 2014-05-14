@@ -1,21 +1,69 @@
 /* 
  * File:   main.c
  * Author: Beck Xu
- * 一个不相干的算法... 
+ * 主函数
  * Created on 2014年5月12日, 下午5:11
  */
 
-/**
-1 2 4 7 
-3 5 8 11 
-6 9 12 14 
-10 13 15 16 
- */
-#include <stdio.h>
-#include <stdlib.h>
 #include "server.h"
 
+#include <time.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <errno.h>
+#include <assert.h>
+#include <ctype.h>
+#include <stdarg.h>
+#include <arpa/inet.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/uio.h>
+#include <limits.h>
+#include <float.h>
+#include <math.h>
+#include <sys/resource.h>
+#include <sys/utsname.h>
+#include <locale.h>
+
+
 struct meginxServer server; /* server global state */
+
+/*============================ Utility functions ============================ */
+
+/* Low level logging. To use only for very big messages, otherwise
+ * redisLog() is to prefer. */
+void redisLogRaw(int level, const char *msg) {
+    const int syslogLevelMap[] = { LOG_DEBUG, LOG_INFO, LOG_NOTICE, LOG_WARNING };
+    const char *c = ".-*#";
+    FILE *fp;
+    char buf[64];
+    int rawmode = (level & REDIS_LOG_RAW);
+    int log_to_stdout = server.logfile[0] == '\0';
+
+    level &= 0xff; /* clear flags */
+    if (level < server.verbosity) return;
+
+    fp = log_to_stdout ? stdout : fopen(server.logfile,"a");
+    if (!fp) return;
+
+    if (rawmode) {
+        fprintf(fp,"%s",msg);
+    } else {
+        int off;
+        struct timeval tv;
+
+        gettimeofday(&tv,NULL);
+        off = strftime(buf,sizeof(buf),"%d %b %H:%M:%S.",localtime(&tv.tv_sec));
+        snprintf(buf+off,sizeof(buf)-off,"%03d",(int)tv.tv_usec/1000);
+        fprintf(fp,"[%d] %s %c %s\n",(int)getpid(),buf,c[level],msg);
+    }
+    fflush(fp);
+
+    if (!log_to_stdout) fclose(fp);
+    if (server.syslog_enabled) syslog(syslogLevelMap[level], "%s", msg);
+}
 
 /* Like redisLogRaw() but with printf-alike support. This is the function that
  * is used across the code. The raw version is only used in order to dump
@@ -30,7 +78,7 @@ void redisLog(int level, const char *fmt, ...) {
     vsnprintf(msg, sizeof(msg), fmt, ap);
     va_end(ap);
 
-    //redisLogRaw(level,msg);
+    redisLogRaw(level,msg);
 }
 
 /* Initialize a set of file descriptors to listen to the specified 'port'
@@ -103,8 +151,16 @@ void initServerConfig() {
     server.sofd = -1;
     server.verbosity = REDIS_DEFAULT_VERBOSITY;
     server.tcpkeepalive = REDIS_DEFAULT_TCP_KEEPALIVE;
+    server.logfile = zstrdup(REDIS_DEFAULT_LOGFILE);
+    server.syslog_enabled = REDIS_DEFAULT_SYSLOG_ENABLED;
 }
 
+/* This function gets called every time Redis is entering the
+ * main loop of the event driven library, that is, before to sleep
+ * for ready file descriptors. */
+void beforeSleep(struct aeEventLoop *eventLoop) {
+    REDIS_NOTUSED(eventLoop);
+}
 /*
  * 
  */
@@ -112,6 +168,9 @@ int main(int argc, char** argv) {
     int j;
     
     initServerConfig();
+    
+    printf("test\n");
+    redisLog(REDIS_NOTICE,"init server");
     
     server.el = aeCreateEventLoop(server.maxclients+REDIS_EVENTLOOP_FDSET_INCR);
     
@@ -133,6 +192,14 @@ int main(int argc, char** argv) {
     if (server.ipfd_count > 0)
         redisLog(REDIS_NOTICE,"The server is now ready to accept connections on port %d", server.port);
     
+    /* Warning the user about suspicious maxmemory setting. */
+    if (server.maxmemory > 0 && server.maxmemory < 1024*1024) {
+        redisLog(REDIS_WARNING,"WARNING: You specified a maxmemory value that is less than 1MB (current value is %llu bytes). Are you sure this is what you really want?", server.maxmemory);
+    }
+
+    aeSetBeforeSleepProc(server.el,beforeSleep);
+    aeMain(server.el);
+    aeDeleteEventLoop(server.el);
     return 0;
 }
 

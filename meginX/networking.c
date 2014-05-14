@@ -30,31 +30,21 @@
 #include <sys/uio.h>
 #include <math.h>
 
-static void acceptCommonHandler(int fd, int flags) {
-    meginxClient *c;
-    if ((c = createClient(fd)) == NULL) {
-        redisLog(REDIS_WARNING,
-            "Error registering fd event for the new client: %s (fd=%d)",
-            strerror(errno),fd);
-        close(fd); /* May be already closed, just ignore errors */
-        return;
-    }
-}
-
-void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
-    int cport, cfd;
-    char cip[REDIS_IP_STR_LEN];
+void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
+    meginxClient *c = (meginxClient*) privdata;
+    int nread, readlen;
+    size_t qblen;
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(mask);
-    REDIS_NOTUSED(privdata);
 
-    cfd = anetTcpAccept(server.neterr, fd, cip, sizeof(cip), &cport);
-    if (cfd == ANET_ERR) {
-        redisLog(REDIS_WARNING,"Accepting client connection: %s", server.neterr);
-        return;
-    }
-    redisLog(REDIS_VERBOSE,"Accepted %s:%d", cip, cport);
-    acceptCommonHandler(cfd,0);
+    server.current_client = c;
+    readlen = REDIS_IOBUF_LEN;
+
+    qblen = sdslen(c->querybuf);
+    if (c->querybuf_peak < qblen) c->querybuf_peak = qblen;
+    c->querybuf = sdsMakeRoomFor(c->querybuf, readlen);
+    nread = read(fd, c->querybuf+qblen, readlen);
+    redisLog(REDIS_WARNING,c->querybuf);
 }
 
 meginxClient *createClient(int fd) {
@@ -84,21 +74,29 @@ meginxClient *createClient(int fd) {
     return c;
 }
 
-void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
-    meginxClient *c = (meginxClient*) privdata;
-    int nread, readlen;
-    size_t qblen;
+static void acceptCommonHandler(int fd, int flags) {
+    meginxClient *c;
+    if ((c = createClient(fd)) == NULL) {
+        redisLog(REDIS_WARNING,
+            "Error registering fd event for the new client: %s (fd=%d)",
+            strerror(errno),fd);
+        close(fd); /* May be already closed, just ignore errors */
+        return;
+    }
+}
+
+void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
+    int cport, cfd;
+    char cip[REDIS_IP_STR_LEN];
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(mask);
+    REDIS_NOTUSED(privdata);
 
-    server.current_client = c;
-    readlen = REDIS_IOBUF_LEN;
-
-    qblen = sdslen(c->querybuf);
-    if (c->querybuf_peak < qblen) c->querybuf_peak = qblen;
-    c->querybuf = sdsMakeRoomFor(c->querybuf, readlen);
-    nread = read(fd, c->querybuf+qblen, readlen);
-    while(sdslen(c->querybuf)) {
-        
+    cfd = anetTcpAccept(server.neterr, fd, cip, sizeof(cip), &cport);
+    if (cfd == ANET_ERR) {
+        redisLog(REDIS_WARNING,"Accepting client connection: %s", server.neterr);
+        return;
     }
+    redisLog(REDIS_VERBOSE,"Accepted %s:%d", cip, cport);
+    acceptCommonHandler(cfd,0);
 }

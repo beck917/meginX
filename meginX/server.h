@@ -8,6 +8,19 @@
 #ifndef SERVER_H
 #define	SERVER_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <limits.h>
+#include <unistd.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <pthread.h>
+#include <syslog.h>
+#include <netinet/in.h>
+#include <signal.h>
+
 #include "ae.h"      /* Event driven programming library */
 #include "sds.h"     /* Dynamic safe strings */
 #include "adlist.h"  /* Linked lists */
@@ -26,6 +39,8 @@
 #define REDIS_DEFAULT_TCP_KEEPALIVE 0
 #define REDIS_IP_STR_LEN INET6_ADDRSTRLEN
 #define REDIS_PEER_ID_LEN (REDIS_IP_STR_LEN+32) /* Must be enough for ip:port */
+#define REDIS_DEFAULT_LOGFILE ""
+#define REDIS_DEFAULT_SYSLOG_ENABLED 0
 
 #define REDIS_BINDADDR_MAX 16
 #define REDIS_MIN_RESERVED_FDS 32
@@ -71,17 +86,30 @@ struct meginxServer {
     int sofd;                   /* Unix socket file descriptor */
     list *clients;              /* List of active clients */
     list *clients_to_close;     /* Clients to close asynchronously */
-	meginxClient *current_client; /* Current client, only used on crash report */
+    meginxClient *current_client; /* Current client, only used on crash report */
     //redisClient *current_client; /* Current client, only used on crash report */
     char neterr[ANET_ERR_LEN];  /* Error buffer for anet.c */
     /* Limits */
     int maxclients;                 /* Max number of simultaneous clients */
     unsigned long long maxmemory;   /* Max number of memory bytes to use */
-	/* Configuration */
-	int verbosity;                  /* Loglevel in redis.conf */
-	int tcpkeepalive;               /* Set SO_KEEPALIVE if non-zero. */
+    /* Configuration */
+    int verbosity;                  /* Loglevel in redis.conf */
+    int tcpkeepalive;               /* Set SO_KEEPALIVE if non-zero. */
+    /* Logging */
+    char *logfile;                  /* Path of log file */
+    int syslog_enabled;             /* Is syslog enabled? */
 };
 
+/*-----------------------------------------------------------------------------
+ * Extern declarations
+ *----------------------------------------------------------------------------*/
+
+extern struct meginxServer server;
+
+/* networking.c -- Networking and Client related operations */
+meginxClient *createClient(int fd);
+void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask);
+void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask);
 /* Anti-warning macro... */
 #define REDIS_NOTUSED(V) ((void) V)
 
