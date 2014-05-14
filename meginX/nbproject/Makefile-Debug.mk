@@ -35,7 +35,16 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
+	${OBJECTDIR}/adlist.o \
+	${OBJECTDIR}/ae.o \
+	${OBJECTDIR}/ae_epoll.o \
+	${OBJECTDIR}/ae_evport.o \
+	${OBJECTDIR}/ae_kqueue.o \
+	${OBJECTDIR}/ae_select.o \
+	${OBJECTDIR}/anet.o \
 	${OBJECTDIR}/main.o \
+	${OBJECTDIR}/networking.o \
+	${OBJECTDIR}/sds.o \
 	${OBJECTDIR}/zmalloc.o
 
 
@@ -63,10 +72,55 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/meginx: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
 	${LINK.c} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/meginx ${OBJECTFILES} ${LDLIBSOPTIONS}
 
+${OBJECTDIR}/adlist.o: adlist.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/adlist.o adlist.c
+
+${OBJECTDIR}/ae.o: ae.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae.o ae.c
+
+${OBJECTDIR}/ae_epoll.o: ae_epoll.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae_epoll.o ae_epoll.c
+
+${OBJECTDIR}/ae_evport.o: ae_evport.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae_evport.o ae_evport.c
+
+${OBJECTDIR}/ae_kqueue.o: ae_kqueue.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae_kqueue.o ae_kqueue.c
+
+${OBJECTDIR}/ae_select.o: ae_select.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae_select.o ae_select.c
+
+${OBJECTDIR}/anet.o: anet.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/anet.o anet.c
+
 ${OBJECTDIR}/main.o: main.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
 	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/main.o main.c
+
+${OBJECTDIR}/networking.o: networking.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/networking.o networking.c
+
+${OBJECTDIR}/sds.o: sds.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/sds.o sds.c
 
 ${OBJECTDIR}/zmalloc.o: zmalloc.c 
 	${MKDIR} -p ${OBJECTDIR}
