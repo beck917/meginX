@@ -41,7 +41,7 @@
 #define REDIS_PEER_ID_LEN (REDIS_IP_STR_LEN+32) /* Must be enough for ip:port */
 #define REDIS_DEFAULT_LOGFILE ""
 #define REDIS_DEFAULT_SYSLOG_ENABLED 0
-
+#define REDIS_MAX_CLIENTS 10000
 #define REDIS_BINDADDR_MAX 16
 #define REDIS_MIN_RESERVED_FDS 32
 /* When configuring the Redis eventloop, we setup it so that the total number
@@ -66,7 +66,11 @@
 typedef struct meginxClient {
     int fd;
     sds querybuf;
+    int connected;
 	size_t querybuf_peak;   /* Recent (100ms or more) peak of querybuf size */
+    char reply_buf[REDIS_REPLY_CHUNK_BYTES];
+    char format_buf[REDIS_IOBUF_LEN];
+    size_t reply_len;
 } meginxClient;
 
 /*-----------------------------------------------------------------------------

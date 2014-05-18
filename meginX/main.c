@@ -1,7 +1,7 @@
 /* 
  * File:   main.c
  * Author: Beck Xu
- * 主函数
+ * main function
  * Created on 2014年5月12日, 下午5:11
  */
 
@@ -153,6 +153,7 @@ void initServerConfig() {
     server.tcpkeepalive = REDIS_DEFAULT_TCP_KEEPALIVE;
     server.logfile = zstrdup(REDIS_DEFAULT_LOGFILE);
     server.syslog_enabled = REDIS_DEFAULT_SYSLOG_ENABLED;
+    server.maxclients = REDIS_MAX_CLIENTS;
 }
 
 /* This function gets called every time Redis is entering the
