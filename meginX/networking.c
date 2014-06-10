@@ -44,6 +44,7 @@ void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
         c->reply_len = strlen(c->reply_buf);
     }
     nwritten = write(fd, c->reply_buf, c->reply_len);
+    
     redisLog(REDIS_NOTICE, "%d", nwritten);
     redisLog(REDIS_NOTICE, "ae d");
 

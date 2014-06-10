@@ -22,6 +22,7 @@ Author: Marcin Kelar ( marcin.kelar@gmail.com )
 #include "md5.h"
 #include "base64.h"
 #include "sha1.h"
+#include "server.h"
 
 int xdigit( char digit ){
 	int val;
@@ -217,7 +218,6 @@ void WEBSOCKET_generate_handshake( const char *data, char *dst, const unsigned i
 		dst = NULL;
 		return;
 	}
-
 	strncat( sec_websocket_key, WEBSOCKET_MAGIC_STRING, 512 );
 
 	SHA1Reset( &sha );
@@ -225,10 +225,10 @@ void WEBSOCKET_generate_handshake( const char *data, char *dst, const unsigned i
 	SHA1Result( &sha );
 
 	for( i = 0; i < 5; i++ ) {
-		snprintf( sha1_part, 32, "%x", sha.Message_Digest[i] );
+		snprintf( sha1_part, 32, "%08x", sha.Message_Digest[i] );
 		strncat( sha1_tmp, sha1_part, 512 );
 	}
-
+        
 	strncpy( sec_websocket_key_sha1, sha1_tmp, 512 );
 	source_len = xstr2str( sha1_hex, 512, sec_websocket_key_sha1 );
 	base64_encode( sha1_hex, source_len - 1, sec_websocket_accept, 512 );
