@@ -105,6 +105,10 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     
     if (nread) {
         sdsIncrLen(c->querybuf,nread);
+    } else {
+        redisLog(REDIS_NOTICE, "test1");
+        server.current_client = NULL;
+        return;
     }
     if (c->connected == 0) {
         WEBSOCKET_generate_handshake(c->querybuf, c->reply_buf, REDIS_IOBUF_LEN);
