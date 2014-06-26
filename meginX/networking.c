@@ -8,7 +8,44 @@
 #include <sys/uio.h>
 #include <math.h>
 #include "websocket.h"
-#include "deps/libghttp/ghttp.h"
+#include "fastcgi.h"
+
+void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
+{
+    REDIS_NOTUSED(el);
+    REDIS_NOTUSED(privdata);
+    REDIS_NOTUSED(mask);
+    
+    buffer *env;
+    
+    fastcgiClient *fc = zmalloc(sizeof(fastcgiClient));
+    fc->fd = fd;
+    fc->buf = buffer_init();
+
+    fcgiCreateEnv(fc, 1);
+}
+
+void connectFastcgi(void)
+{
+    int fd;
+
+    fd = anetTcpNonBlockConnect(NULL, '192.179.1.79', '80');
+    if (fd == -1) {
+        redisLog(REDIS_WARNING,"Unable to connect to fastcgi service: %s",
+            strerror(errno));
+        return REDIS_ERR;
+    }
+    
+    if (aeCreateFileEvent(server.el,fd,AE_WRITABLE,sendRequest,NULL) ==
+            AE_ERR)
+    {
+        close(fd);
+        redisLog(REDIS_WARNING,"Can't create readable event for SYNC");
+        return REDIS_ERR;
+    }
+    
+    return REDIS_OK;
+}
 
 /* resetClient prepare the client to process the next command */
 void resetClient(meginxClient *c) {
@@ -16,29 +53,6 @@ void resetClient(meginxClient *c) {
     memset(c->reply_buf, '\0', REDIS_IOBUF_LEN);
     sdsfree(c->querybuf);
     c->querybuf = sdsempty();
-}
-
-void ghttpGet() {
-    char *uri = "http://www.baidu.com";
-    ghttp_request *request = NULL;
-    ghttp_status status;
-    char *buf;
-    int bytes_read;
-    
-    request = ghttp_request_new();
-    if(ghttp_set_uri(request, uri) == -1)
-        exit(-1);
-    if(ghttp_set_type(request, ghttp_type_get) == -1)
-        exit(-1);
-    ghttp_prepare(request);
-    status = ghttp_process(request);
-    if(status == ghttp_error)
-        exit(-1);
-    /* OK, done */
-    printf("Status code -> %d\n", ghttp_status_code(request));
-    buf = ghttp_get_body(request);
-    bytes_read = ghttp_get_body_len(request);
-    redisLog(REDIS_NOTICE,buf);
 }
 
 void freeClient(meginxClient *c) {
@@ -117,8 +131,6 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     } else {
         int result = WEBSOCKET_get_content(c->querybuf, nread, c->format_buf, REDIS_IOBUF_LEN);
         c->reply_len = WEBSOCKET_set_content( c->format_buf, strlen(c->format_buf), c->reply_buf, REDIS_IOBUF_LEN );
-        //send to http
-        ghttpGet();
     }
     redisLog(REDIS_NOTICE, "ae g");
     if (aeCreateFileEvent(server.el, c->fd, AE_WRITABLE,sendReplyToClient, c) == AE_ERR) return;

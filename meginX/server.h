@@ -26,6 +26,7 @@
 #include "adlist.h"  /* Linked lists */
 #include "zmalloc.h" /* total memory usage aware version of malloc/free */
 #include "anet.h"    /* Networking the easy way */
+#include "buffer.h"
 
 /* Error codes */
 #define REDIS_OK                0
