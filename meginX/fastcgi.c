@@ -10,7 +10,7 @@
 #include "fastcgi.h"
 #include "server.h"
 
-static int fcgiHeader(FCGI_Header * header, unsigned char type, size_t request_id, int contentLength, unsigned char paddingLength) {
+static int fcgi_header(FCGI_Header * header, unsigned char type, size_t request_id, int contentLength, unsigned char paddingLength) {
     header->version = FCGI_VERSION_1;
     header->type = type;
     header->requestIdB0 = request_id & 0xff;
@@ -80,5 +80,14 @@ int fcgiCreateEnv(fastcgiClient *fc, size_t request_id)
 {
     FCGI_BeginRequestRecord beginRecord;
     FCGI_Header header;
+    
+    /* send FCGI_BEGIN_REQUEST */
+    fcgi_header(&(beginRecord.header), FCGI_BEGIN_REQUEST, request_id, sizeof(beginRecord.body), 0);
+    beginRecord.body.roleB0 = FCGI_RESPONDER;
+    beginRecord.body.roleB1 = 0;
+    beginRecord.body.flags = 0;
+    memset(beginRecord.body.reserved, 0, sizeof(beginRecord.body.reserved));
+    
+    buffer_copy_memory(fc->buf, (const char *)&beginRecord, sizeof(beginRecord));
 }
 
