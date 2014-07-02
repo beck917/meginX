@@ -7,8 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "fastcgi.h"
 #include "server.h"
+#include "fastcgi.h"
 
 static int fcgi_header(FCGI_Header * header, unsigned char type, size_t request_id, int contentLength, unsigned char paddingLength) {
     header->version = FCGI_VERSION_1;
@@ -80,6 +80,8 @@ int fcgiCreateEnv(fastcgiClient *fc, size_t request_id)
 {
     FCGI_BeginRequestRecord beginRecord;
     FCGI_Header header;
+    buffer *fcgi_env_buf;
+    char buf[32];
     
     /* send FCGI_BEGIN_REQUEST */
     fcgi_header(&(beginRecord.header), FCGI_BEGIN_REQUEST, request_id, sizeof(beginRecord.body), 0);
@@ -89,5 +91,35 @@ int fcgiCreateEnv(fastcgiClient *fc, size_t request_id)
     memset(beginRecord.body.reserved, 0, sizeof(beginRecord.body.reserved));
     
     buffer_copy_memory(fc->buf, (const char *)&beginRecord, sizeof(beginRecord));
+    
+    /* send FCGI_PARAMS */
+    fcgi_env_buf = buffer_init();
+    buffer_prepare_copy(fcgi_env_buf, 1024);
+    int i;
+    int arrlen;
+    GET_ARRAY_LEN(fcgi_params, arrlen);
+
+    for (i = 0; i < arrlen; i++) {
+        fcgi_env_add(fcgi_env_buf, CONST_STR_LEN(fcgi_params[i]->name), CONST_STR_LEN(fcgi_params[i]->value));
+    }
+    
+    fcgi_header(&(header), FCGI_PARAMS, request_id, fcgi_env_buf->used, 0);
+    buffer_append_memory(fc->buf, (const char *)&header, sizeof(header));
+    buffer_append_memory(fc->buf, (const char *)fcgi_env_buf->ptr, fcgi_env_buf->used);
+
+    fcgi_header(&(header), FCGI_PARAMS, request_id, 0, 0);
+    buffer_append_memory(fc->buf, (const char *)&header, sizeof(header));
+
+    fc->buf->used++; /* add virtual \0 */
+    
+    /* send STDIN */
+    char *data = "test";
+    fcgi_header(&(header), FCGI_STDIN, request_id, strlen(data), 0);
+    buffer_copy_memory(fc->buf, (const char *)&header, sizeof(header));
+    buffer_copy_memory(fc->buf, data, sizeof(*data));
+    /* terminate STDIN */
+    fcgi_header(&(header), FCGI_STDIN, request_id, 0, 0);
+    buffer_copy_memory(fc->buf, (const char *)&header, sizeof(header));
+    fc->buf->used++; /* add virtual \0 */
 }
 

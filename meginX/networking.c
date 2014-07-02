@@ -10,6 +10,21 @@
 #include "websocket.h"
 #include "fastcgi.h"
 
+
+void readQueryFromFcgi(aeEventLoop *el, int fd, void *privdata, int mask) 
+{
+    REDIS_NOTUSED(el);
+    REDIS_NOTUSED(privdata);
+    REDIS_NOTUSED(mask);
+    char *buf;
+    int readlen;
+    readlen = REDIS_IOBUF_LEN;
+    read(fd, buf, readlen);
+    
+    redisLog(REDIS_NOTICE, buf);
+    aeDeleteFileEvent(server.el, fd, AE_READABLE);
+}
+
 void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
 {
     REDIS_NOTUSED(el);
@@ -23,6 +38,10 @@ void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
     fc->buf = buffer_init();
 
     fcgiCreateEnv(fc, 1);
+    
+    write(fd, fc->buf->ptr, fc->buf->used);
+    aeDeleteFileEvent(server.el, fd, AE_WRITABLE);
+    aeCreateFileEvent(server.el, fd, AE_READABLE, readQueryFromFcgi, NULL);
 }
 
 void connectFastcgi(void)

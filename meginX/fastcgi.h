@@ -31,9 +31,31 @@ typedef struct {
     unsigned char reserved;
 } FCGI_Header;
 
+struct fcgiParams {
+	char *name;
+	char *value;
+} fcgi_params[] = {
+	"GATEWAY_INTERFACE", "FastCGI/1.0",
+	"REQUEST_METHOD"   , "GET",
+	"SCRIPT_FILENAME"  , "/var/www/html/pofchina/www/public_html/test.php",
+	"SCRIPT_NAME"      , "/test.php",
+	"QUERY_STRING"     , "",
+	"REQUEST_URI"      , "/test.php",
+	"DOCUMENT_URI"     , "",
+	"SERVER_SOFTWARE"  , "pillX/0.1",
+	"REMOTE_ADDR"      , "127.0.0.1",
+	"REMOTE_PORT"      , "9985",
+	"SERVER_ADDR"      , "127.0.0.1",
+	"SERVER_PORT"      , "80",
+	"SERVER_NAME"      , "haizei.dev",
+	"SERVER_PROTOCOL"  , "HTTP/1.1",
+	"CONTENT_TYPE"     , "",
+	"CONTENT_LENGTH"   , "0",
+};
+
 typedef struct fastcgiClient {
     int fd;
-    buffer buf;
+    buffer *buf;
 } fastcgiClient;
 
 #define FCGI_MAX_LENGTH 0xffff
@@ -137,6 +159,7 @@ typedef struct {
     FCGI_UnknownTypeBody body;
 } FCGI_UnknownTypeRecord;
 
+#define GET_ARRAY_LEN(array,len) {len = (sizeof(array) / sizeof(array[0]));} 
 int fcgiCreateEnv(fastcgiClient *fc, size_t request_id);
 
 #endif	/* _FASTCGI_H */

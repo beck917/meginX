@@ -1,5 +1,16 @@
+#ifndef _BUFFER_H_
+#define _BUFFER_H_
+
 #include <stdlib.h>
 #include <sys/types.h>
+
+/**
+ * max size of a buffer which will just be reset
+ * to ->used = 0 instead of really freeing the buffer
+ *
+ * 64kB (no real reason, just a guess)
+ */
+#define BUFFER_MAX_REUSE_SIZE  (4 * 1024)
 
 typedef struct {
 	char *ptr;
