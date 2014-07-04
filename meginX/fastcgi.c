@@ -8,7 +8,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "server.h"
-#include "fastcgi.h"
+
+struct fcgiParams {
+	char *name;
+	char *value;
+} fcgi_params[] = {
+	"GATEWAY_INTERFACE", "FastCGI/1.0",
+	"REQUEST_METHOD"   , "GET",
+	"SCRIPT_FILENAME"  , "/var/www/html/pofchina/www/public_html/echo.php",
+	"SCRIPT_NAME"      , "/test.php",
+	"QUERY_STRING"     , "",
+	"REQUEST_URI"      , "/test.php",
+	"DOCUMENT_URI"     , "",
+	"SERVER_SOFTWARE"  , "pillX/0.1",
+	"REMOTE_ADDR"      , "127.0.0.1",
+	"REMOTE_PORT"      , "6389",
+	"SERVER_ADDR"      , "127.0.0.1",
+	"SERVER_PORT"      , "8088",
+	"SERVER_NAME"      , "127.0.0.1",
+	"SERVER_PROTOCOL"  , "HTTP/1.1",
+	"CONTENT_TYPE"     , "",
+	"CONTENT_LENGTH"   , "5",
+};
 
 static int fcgi_header(FCGI_Header * header, unsigned char type, size_t request_id, int contentLength, unsigned char paddingLength) {
     header->version = FCGI_VERSION_1;
@@ -49,7 +70,7 @@ static int fcgi_env_add(buffer *env, const char *key, size_t key_len, const char
 	if (val_len > 0x7fffffff) val_len = 0x7fffffff;
 
 	buffer_prepare_append(env, len);
-
+        
 	if (key_len > 127) {
 		env->ptr[env->used++] = ((key_len >> 24) & 0xff) | 0x80;
 		env->ptr[env->used++] = (key_len >> 16) & 0xff;
@@ -100,9 +121,9 @@ int fcgiCreateEnv(fastcgiClient *fc, size_t request_id)
     GET_ARRAY_LEN(fcgi_params, arrlen);
 
     for (i = 0; i < arrlen; i++) {
-        fcgi_env_add(fcgi_env_buf, CONST_STR_LEN(fcgi_params[i]->name), CONST_STR_LEN(fcgi_params[i]->value));
+        fcgi_env_add(fcgi_env_buf, fcgi_params[i].name, strlen(fcgi_params[i].name), fcgi_params[i].value, strlen(fcgi_params[i].value));
     }
-    
+    redisLog(REDIS_NOTICE, "%s", fcgi_env_buf->ptr);
     fcgi_header(&(header), FCGI_PARAMS, request_id, fcgi_env_buf->used, 0);
     buffer_append_memory(fc->buf, (const char *)&header, sizeof(header));
     buffer_append_memory(fc->buf, (const char *)fcgi_env_buf->ptr, fcgi_env_buf->used);
@@ -112,14 +133,9 @@ int fcgiCreateEnv(fastcgiClient *fc, size_t request_id)
 
     fc->buf->used++; /* add virtual \0 */
     
-    /* send STDIN */
-    char *data = "test";
-    fcgi_header(&(header), FCGI_STDIN, request_id, strlen(data), 0);
-    buffer_copy_memory(fc->buf, (const char *)&header, sizeof(header));
-    buffer_copy_memory(fc->buf, data, sizeof(*data));
     /* terminate STDIN */
-    fcgi_header(&(header), FCGI_STDIN, request_id, 0, 0);
-    buffer_copy_memory(fc->buf, (const char *)&header, sizeof(header));
+    fcgi_header(&(header), FCGI_PARAMS, request_id, 0, 0);
+    buffer_append_memory(fc->buf, (const char *)&header, sizeof(header));
     fc->buf->used++; /* add virtual \0 */
 }
 

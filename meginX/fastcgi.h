@@ -31,28 +31,6 @@ typedef struct {
     unsigned char reserved;
 } FCGI_Header;
 
-struct fcgiParams {
-	char *name;
-	char *value;
-} fcgi_params[] = {
-	"GATEWAY_INTERFACE", "FastCGI/1.0",
-	"REQUEST_METHOD"   , "GET",
-	"SCRIPT_FILENAME"  , "/var/www/html/pofchina/www/public_html/test.php",
-	"SCRIPT_NAME"      , "/test.php",
-	"QUERY_STRING"     , "",
-	"REQUEST_URI"      , "/test.php",
-	"DOCUMENT_URI"     , "",
-	"SERVER_SOFTWARE"  , "pillX/0.1",
-	"REMOTE_ADDR"      , "127.0.0.1",
-	"REMOTE_PORT"      , "9985",
-	"SERVER_ADDR"      , "127.0.0.1",
-	"SERVER_PORT"      , "80",
-	"SERVER_NAME"      , "haizei.dev",
-	"SERVER_PROTOCOL"  , "HTTP/1.1",
-	"CONTENT_TYPE"     , "",
-	"CONTENT_LENGTH"   , "0",
-};
-
 typedef struct fastcgiClient {
     int fd;
     buffer *buf;

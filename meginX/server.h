@@ -27,6 +27,7 @@
 #include "zmalloc.h" /* total memory usage aware version of malloc/free */
 #include "anet.h"    /* Networking the easy way */
 #include "buffer.h"
+#include "fastcgi.h"
 
 /* Error codes */
 #define REDIS_OK                0

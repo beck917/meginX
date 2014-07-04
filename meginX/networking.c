@@ -8,25 +8,45 @@
 #include <sys/uio.h>
 #include <math.h>
 #include "websocket.h"
-#include "fastcgi.h"
-
 
 void readQueryFromFcgi(aeEventLoop *el, int fd, void *privdata, int mask) 
 {
+    redisLog(REDIS_NOTICE, "test456");
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(privdata);
     REDIS_NOTUSED(mask);
     char *buf;
-    int readlen;
+    int nread, readlen;
+    sds querybuf = sdsempty();
+
     readlen = REDIS_IOBUF_LEN;
-    read(fd, buf, readlen);
+    querybuf = sdsMakeRoomFor(querybuf, readlen);
+    nread = read(fd, querybuf, readlen);
+    redisLog(REDIS_NOTICE, "%d", nread);
+    if (nread == -1) {
+        if (errno == EAGAIN) {
+            nread = 0;
+        } else {
+            redisLog(REDIS_NOTICE, "error %d", errno);
+            redisLog(REDIS_NOTICE, "Reading from client: %s",strerror(errno));
+            return;
+        }
+    } else if (nread == 0) {
+        redisLog(REDIS_NOTICE, "Client closed connection");
+        close(fd);
+        return;
+    }
     
-    redisLog(REDIS_NOTICE, buf);
+    FILE *fp = fopen("myfile1.bin","wb");
+    fwrite(querybuf, readlen, 1, fp);
+    fclose(fp);
+    
     aeDeleteFileEvent(server.el, fd, AE_READABLE);
 }
 
 void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
 {
+    redisLog(REDIS_NOTICE, "test123");
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(privdata);
     REDIS_NOTUSED(mask);
@@ -38,17 +58,23 @@ void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
     fc->buf = buffer_init();
 
     fcgiCreateEnv(fc, 1);
+    redisLog(REDIS_NOTICE, "%d",fc->buf->size);
+    redisLog(REDIS_NOTICE, "%d",fc->buf->used);
+
+    FILE *fp = fopen("myfile.bin","wb");
+    fwrite(fc->buf->ptr, fc->buf->used, 1, fp);
+    fclose(fp);
     
+    aeCreateFileEvent(server.el, fd, AE_READABLE, readQueryFromFcgi, NULL);
     write(fd, fc->buf->ptr, fc->buf->used);
     aeDeleteFileEvent(server.el, fd, AE_WRITABLE);
-    aeCreateFileEvent(server.el, fd, AE_READABLE, readQueryFromFcgi, NULL);
 }
 
-void connectFastcgi(void)
+int connectFastcgi(void)
 {
     int fd;
 
-    fd = anetTcpNonBlockConnect(NULL, '192.179.1.79', '80');
+    fd = anetTcpNonBlockConnect(NULL, "127.0.0.1", 9000);
     if (fd == -1) {
         redisLog(REDIS_WARNING,"Unable to connect to fastcgi service: %s",
             strerror(errno));
@@ -150,6 +176,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     } else {
         int result = WEBSOCKET_get_content(c->querybuf, nread, c->format_buf, REDIS_IOBUF_LEN);
         c->reply_len = WEBSOCKET_set_content( c->format_buf, strlen(c->format_buf), c->reply_buf, REDIS_IOBUF_LEN );
+        connectFastcgi();
     }
     redisLog(REDIS_NOTICE, "ae g");
     if (aeCreateFileEvent(server.el, c->fd, AE_WRITABLE,sendReplyToClient, c) == AE_ERR) return;
