@@ -51,7 +51,7 @@ static int fastcgi_get_packet(fastcgiResponse *fr, fastcgi_response_packet *pack
 	packet->request_id = 0;
 
 	toread = 8;
-        buffer_append_string_len(packet->b, fr->buf + fr->offset, toread);
+        buffer_append_string_len(packet->b, fr->buf->ptr + fr->offset, toread);
 
 	if ((packet->b->used == 0) ||
 	    (packet->b->used - 1 < sizeof(FCGI_Header))) {
@@ -74,7 +74,7 @@ static int fastcgi_get_packet(fastcgiResponse *fr, fastcgi_response_packet *pack
 
 	if (packet->len) {
 		/* copy the content */
-		buffer_append_string_len(packet->b, fr->buf + fr->offset + toread, packet->len);
+		buffer_append_string_len(packet->b, fr->buf->ptr + fr->offset + toread, packet->len);
 
 		if (packet->b->used < packet->len + 1) {
 			/* we didn't get the full packet */
@@ -110,9 +110,9 @@ int fcgi_demux_response(fastcgiResponse *fr) {
                     if (packet.len == 0) break;
                     char *c;
                     size_t blen;
-                    if (NULL != (c = buffer_search_string_len(packet->b, CONST_STR_LEN("\r\n\r\n")))) {
-                            blen = packet->b->used - (c - packet->b->ptr) - 4;
-                            packet->b->used = (c - packet->b->ptr) + 3;
+                    if (NULL != (c = buffer_search_string_len(packet.b, CONST_STR_LEN("\r\n\r\n")))) {
+                            blen = packet.b->used - (c - packet.b->ptr) - 4;
+                            packet.b->used = (c - packet.b->ptr) + 3;
                             c += 4; /* point the the start of the response */
                     }
                     redisLog(REDIS_NOTICE, c);
