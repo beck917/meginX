@@ -36,6 +36,12 @@ typedef struct fastcgiClient {
     buffer *buf;
 } fastcgiClient;
 
+typedef struct fastcgiResponse {
+    int fd;
+    buffer *buf;
+	int offset;
+} fastcgiResponse;
+
 #define FCGI_MAX_LENGTH 0xffff
 
 /*
@@ -139,6 +145,7 @@ typedef struct {
 
 #define GET_ARRAY_LEN(array,len) {len = (sizeof(array) / sizeof(array[0]));} 
 int fcgiCreateEnv(fastcgiClient *fc, size_t request_id);
+int fcgi_demux_response(fastcgiResponse *fr);
 
 #endif	/* _FASTCGI_H */
 

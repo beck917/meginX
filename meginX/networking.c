@@ -15,13 +15,18 @@ void readQueryFromFcgi(aeEventLoop *el, int fd, void *privdata, int mask)
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(privdata);
     REDIS_NOTUSED(mask);
-    char *buf;
     int nread, readlen;
-    sds querybuf = sdsempty();
+    fastcgiResponse *fr = zmalloc(sizeof(fastcgiResponse));
+    fr->fd = fd;
+    fr->buf = buffer_init();
+    fr->offset = 0;
 
     readlen = REDIS_IOBUF_LEN;
-    querybuf = sdsMakeRoomFor(querybuf, readlen);
-    nread = read(fd, querybuf, readlen);
+    buffer_prepare_copy(fr->buf, readlen);
+    nread = read(fd, fr->buf->ptr, readlen);
+    
+    fr->buf->used = nread + 1; /* one extra for the fake \0 */
+    fr->buf->ptr[fr->buf->used - 1] = '\0';
     redisLog(REDIS_NOTICE, "%d", nread);
     if (nread == -1) {
         if (errno == EAGAIN) {
@@ -37,8 +42,10 @@ void readQueryFromFcgi(aeEventLoop *el, int fd, void *privdata, int mask)
         return;
     }
     
+    fcgi_demux_response(fr);
+    
     FILE *fp = fopen("myfile1.bin","wb");
-    fwrite(querybuf, readlen, 1, fp);
+    fwrite(fr->buf->ptr, fr->buf->used, 1, fp);
     fclose(fp);
     
     aeDeleteFileEvent(server.el, fd, AE_READABLE);

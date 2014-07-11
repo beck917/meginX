@@ -31,6 +31,109 @@ struct fcgiParams {
 	"CONTENT_LENGTH"   , "5",
 };
 
+typedef struct {
+	buffer  *b;
+	size_t   len;
+	int      type;
+	int      padding;
+	size_t   request_id;
+} fastcgi_response_packet;
+
+static int fastcgi_get_packet(fastcgiResponse *fr, fastcgi_response_packet *packet) {
+	size_t offset;
+	size_t toread;
+	FCGI_Header *header;
+
+	packet->b = buffer_init();
+	packet->len = 0;
+	packet->type = 0;
+	packet->padding = 0;
+	packet->request_id = 0;
+
+	toread = 8;
+        buffer_append_string_len(packet->b, fr->buf + fr->offset, toread);
+
+	if ((packet->b->used == 0) ||
+	    (packet->b->used - 1 < sizeof(FCGI_Header))) {
+		/* no header */
+		buffer_free(packet->b);
+
+		return -1;
+	}
+
+	/* we have at least a header, now check how much me have to fetch */
+	header = (FCGI_Header *)(packet->b->ptr);
+
+	packet->len = (header->contentLengthB0 | (header->contentLengthB1 << 8)) + header->paddingLength;
+	packet->request_id = (header->requestIdB0 | (header->requestIdB1 << 8));
+	packet->type = header->type;
+	packet->padding = header->paddingLength; 
+
+	/* ->b should only be the content */
+	buffer_copy_string_len(packet->b, CONST_STR_LEN("")); /* used == 1 */
+
+	if (packet->len) {
+		/* copy the content */
+		buffer_append_string_len(packet->b, fr->buf + fr->offset + toread, packet->len);
+
+		if (packet->b->used < packet->len + 1) {
+			/* we didn't get the full packet */
+
+			buffer_free(packet->b);
+			return -1;
+		}
+
+		packet->b->used -= packet->padding;
+		packet->b->ptr[packet->b->used - 1] = '\0';
+	}
+
+	/* tag the chunks as read */
+	toread = packet->len + sizeof(FCGI_Header);
+	fr->offset += toread;
+
+	return 0;
+}
+
+int fcgi_demux_response(fastcgiResponse *fr) {
+    int fin = 0;
+    while (fin == 0) {
+            fastcgi_response_packet packet;
+
+            /* check if we have at least one packet */
+            if (0 != fastcgi_get_packet(fr, &packet)) {
+                    /* no full packet */
+                    break;
+            }
+
+            switch(packet.type) {
+            case FCGI_STDOUT:
+                    if (packet.len == 0) break;
+                    char *c;
+                    size_t blen;
+                    if (NULL != (c = buffer_search_string_len(packet->b, CONST_STR_LEN("\r\n\r\n")))) {
+                            blen = packet->b->used - (c - packet->b->ptr) - 4;
+                            packet->b->used = (c - packet->b->ptr) + 3;
+                            c += 4; /* point the the start of the response */
+                    }
+                    redisLog(REDIS_NOTICE, c);
+                    break;
+            case FCGI_STDERR:
+                    if (packet.len == 0) break;
+
+                    break;
+            case FCGI_END_REQUEST:
+
+                    fin = 1;
+                    break;
+            default:
+                    break;
+            }
+            buffer_free(packet.b);
+    }
+
+    return fin;
+}
+
 static int fcgi_header(FCGI_Header * header, unsigned char type, size_t request_id, int contentLength, unsigned char paddingLength) {
     header->version = FCGI_VERSION_1;
     header->type = type;
