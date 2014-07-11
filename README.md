@@ -1,7 +1,7 @@
 meginX
 ======
 
-meginX is a game server,use redis AE libs for network communication, and use curl lib communicate with web server Temporarily,will modify fastcgi communication later
+meginX is a game server,use redis AE libs for network communication, and use fastcgi communication with fastcgi server, such as php-fpm..
 
 meginX is a part of medis game server developer kit,which is contains medis(kv db),phpill(php framework) and meginX,also you can use meginX with other web development language
 
