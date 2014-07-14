@@ -14,10 +14,10 @@ struct fcgiParams {
 	char *value;
 } fcgi_params[] = {
 	"GATEWAY_INTERFACE", "FastCGI/1.0",
-	"REQUEST_METHOD"   , "GET",
+	"REQUEST_METHOD"   , "POST",
 	"SCRIPT_FILENAME"  , "/var/www/html/pofchina/www/public_html/echo.php",
 	"SCRIPT_NAME"      , "/test.php",
-	"QUERY_STRING"     , "",
+	"QUERY_STRING"     , "input={\"t\":\"test\"}",
 	"REQUEST_URI"      , "/test.php",
 	"DOCUMENT_URI"     , "",
 	"SERVER_SOFTWARE"  , "pillX/0.1",
@@ -28,7 +28,7 @@ struct fcgiParams {
 	"SERVER_NAME"      , "127.0.0.1",
 	"SERVER_PROTOCOL"  , "HTTP/1.1",
 	"CONTENT_TYPE"     , "",
-	"CONTENT_LENGTH"   , "5",
+	"CONTENT_LENGTH"   , "0",
 };
 
 typedef struct {
@@ -115,7 +115,7 @@ int fcgi_demux_response(fastcgiResponse *fr) {
                             packet.b->used = (c - packet.b->ptr) + 3;
                             c += 4; /* point the the start of the response */
                     }
-                    redisLog(REDIS_NOTICE, c);
+                    buffer_append_string_len(fr->format_buf, c, blen);
                     break;
             case FCGI_STDERR:
                     if (packet.len == 0) break;
@@ -200,7 +200,7 @@ static int fcgi_env_add(buffer *env, const char *key, size_t key_len, const char
 	return 0;
 }
 
-int fcgiCreateEnv(fastcgiClient *fc, size_t request_id)
+int fcgiCreateEnv(buffer *fc_buf, size_t request_id)
 {
     FCGI_BeginRequestRecord beginRecord;
     FCGI_Header header;
@@ -214,7 +214,7 @@ int fcgiCreateEnv(fastcgiClient *fc, size_t request_id)
     beginRecord.body.flags = 0;
     memset(beginRecord.body.reserved, 0, sizeof(beginRecord.body.reserved));
     
-    buffer_copy_memory(fc->buf, (const char *)&beginRecord, sizeof(beginRecord));
+    buffer_copy_memory(fc_buf, (const char *)&beginRecord, sizeof(beginRecord));
     
     /* send FCGI_PARAMS */
     fcgi_env_buf = buffer_init();
@@ -228,17 +228,17 @@ int fcgiCreateEnv(fastcgiClient *fc, size_t request_id)
     }
     redisLog(REDIS_NOTICE, "%s", fcgi_env_buf->ptr);
     fcgi_header(&(header), FCGI_PARAMS, request_id, fcgi_env_buf->used, 0);
-    buffer_append_memory(fc->buf, (const char *)&header, sizeof(header));
-    buffer_append_memory(fc->buf, (const char *)fcgi_env_buf->ptr, fcgi_env_buf->used);
+    buffer_append_memory(fc_buf, (const char *)&header, sizeof(header));
+    buffer_append_memory(fc_buf, (const char *)fcgi_env_buf->ptr, fcgi_env_buf->used);
 
     fcgi_header(&(header), FCGI_PARAMS, request_id, 0, 0);
-    buffer_append_memory(fc->buf, (const char *)&header, sizeof(header));
+    buffer_append_memory(fc_buf, (const char *)&header, sizeof(header));
 
-    fc->buf->used++; /* add virtual \0 */
+    fc_buf->used++; /* add virtual \0 */
     
     /* terminate STDIN */
     fcgi_header(&(header), FCGI_PARAMS, request_id, 0, 0);
-    buffer_append_memory(fc->buf, (const char *)&header, sizeof(header));
-    fc->buf->used++; /* add virtual \0 */
+    buffer_append_memory(fc_buf, (const char *)&header, sizeof(header));
+    fc_buf->used++; /* add virtual \0 */
 }
 
