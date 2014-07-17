@@ -93,7 +93,6 @@ struct meginxServer {
     list *clients;              /* List of active clients */
     list *clients_to_close;     /* Clients to close asynchronously */
     meginxClient *current_client; /* Current client, only used on crash report */
-    //redisClient *current_client; /* Current client, only used on crash report */
     char neterr[ANET_ERR_LEN];  /* Error buffer for anet.c */
     /* Limits */
     int maxclients;                 /* Max number of simultaneous clients */

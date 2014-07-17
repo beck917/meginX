@@ -89,6 +89,8 @@ void REQUEST_get_header_value( const char *data, const char *requested_key, char
 
 	tmp_header_key = strstr( ( char* )src, requested_key );
 	if( tmp_header_key == NULL ) {
+                free( src );
+                src = NULL;
 		dst = NULL;
 		return;
 	}

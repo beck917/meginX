@@ -36,21 +36,17 @@ void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(mask);
-    redisLog(REDIS_NOTICE, "ae s");
+
     //char *str = "*1\r\n$1\r\n1\r\n";
     //nwritten = write(fd, str, strlen(str));
     if (c->reply_len == 0) {
         c->reply_len = strlen(c->reply_buf);
     }
     nwritten = write(fd, c->reply_buf, c->reply_len);
-    
-    redisLog(REDIS_NOTICE, "%d", nwritten);
-    redisLog(REDIS_NOTICE, "ae d");
 
     resetClient(c);
     
     aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
-    //redisLog(REDIS_NOTICE,c->format_buf);
 }
 
 void readQueryFromFcgi(aeEventLoop *el, int fd, void *privdata, int mask) 
@@ -146,9 +142,12 @@ void freeClient(meginxClient *c) {
     /* Free the query buffer */
     sdsfree(c->querybuf);
     c->querybuf = NULL;
+    /* If this is marked as current client unset it */
+    if (server.current_client == c) server.current_client = NULL;
     
     /* Close socket, unregister events, and remove list of replies and
      * accumulated arguments. */
+    redisLog(REDIS_NOTICE, "C %d", c->fd);
     if (c->fd != -1) {
         aeDeleteFileEvent(server.el,c->fd,AE_READABLE);
         aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
@@ -163,7 +162,6 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(mask);
 
-    server.current_client = c;
     readlen = REDIS_IOBUF_LEN;
     
     c->querybuf = sdsMakeRoomFor(c->querybuf, readlen);
@@ -185,9 +183,9 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     if (nread) {
         sdsIncrLen(c->querybuf,nread);
     } else {
-        server.current_client = NULL;
         return;
     }
+
     if (c->connected == 0) {
         WEBSOCKET_generate_handshake(c->querybuf, c->reply_buf, REDIS_IOBUF_LEN);
         c->reply_len = 0;
@@ -195,10 +193,16 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
         c->connected = 1;
     } else {
         int result = WEBSOCKET_get_content(c->querybuf, nread, c->format_buf, REDIS_IOBUF_LEN);
+        if (result < 0) {
+            //disconnect
+            redisLog(REDIS_NOTICE, "Client closed connection 1");
+            freeClient(c);
+            return;
+        }
         connectFastcgi(c);
+        //c->reply_len = WEBSOCKET_set_content( c->format_buf, strlen(c->format_buf), c->reply_buf, REDIS_IOBUF_LEN );
+        //if (aeCreateFileEvent(server.el, c->fd, AE_WRITABLE,sendReplyToClient, c) == AE_ERR) return;
     }
-
-    server.current_client = NULL;
 }
 
 meginxClient *createClient(int fd) {
