@@ -38,7 +38,7 @@
 #define REDIS_SERVERPORT        6389    /* TCP port */
 #define REDIS_TCP_BACKLOG       511     /* TCP listen backlog */
 #define REDIS_DEFAULT_UNIX_SOCKET_PERM 0
-#define REDIS_DEFAULT_TCP_KEEPALIVE 0
+#define REDIS_DEFAULT_TCP_KEEPALIVE 60
 #define REDIS_IP_STR_LEN INET6_ADDRSTRLEN
 #define REDIS_PEER_ID_LEN (REDIS_IP_STR_LEN+32) /* Must be enough for ip:port */
 #define REDIS_DEFAULT_LOGFILE ""
@@ -70,9 +70,11 @@ typedef struct meginxClient {
     sds querybuf;
     int connected;
 	size_t querybuf_peak;   /* Recent (100ms or more) peak of querybuf size */
-    char reply_buf[REDIS_REPLY_CHUNK_BYTES];
-    char format_buf[REDIS_IOBUF_LEN];
+    unsigned char reply_buf[REDIS_REPLY_CHUNK_BYTES];
+	char handshake_buf[1024];
+    unsigned char format_buf[REDIS_IOBUF_LEN];
     size_t reply_len;
+	fastcgiResponse *fr;
 } meginxClient;
 
 /*-----------------------------------------------------------------------------

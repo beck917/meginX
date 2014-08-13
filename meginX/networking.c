@@ -21,7 +21,8 @@ void freeFcgiClient(fastcgiResponse *fr)
 {
     buffer_free(fr->buf);
     buffer_free(fr->format_buf);
-    
+    fr->buf = NULL;
+    fr->format_buf = NULL;
     if (fr->fd != -1) {
         aeDeleteFileEvent(server.el,fr->fd,AE_READABLE);
         aeDeleteFileEvent(server.el,fr->fd,AE_WRITABLE);
@@ -40,9 +41,11 @@ void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     //char *str = "*1\r\n$1\r\n1\r\n";
     //nwritten = write(fd, str, strlen(str));
     if (c->reply_len == 0) {
-        c->reply_len = strlen(c->reply_buf);
+        c->reply_len = strlen(c->handshake_buf);
+        nwritten = write(fd, c->handshake_buf, c->reply_len);
+    } else {
+        nwritten = write(fd, c->reply_buf, c->reply_len);
     }
-    nwritten = write(fd, c->reply_buf, c->reply_len);
 
     resetClient(c);
     
@@ -55,18 +58,21 @@ void readQueryFromFcgi(aeEventLoop *el, int fd, void *privdata, int mask)
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(mask);
     int nread, readlen;
-    fastcgiResponse *fr = zmalloc(sizeof(fastcgiResponse));
-    fr->fd = fd;
-    fr->buf = buffer_init();
-    fr->offset = 0;
-    fr->format_buf = buffer_init();
-
-    readlen = REDIS_IOBUF_LEN;
-    buffer_prepare_copy(fr->buf, readlen);
-    nread = read(fd, fr->buf->ptr, readlen);
     
-    fr->buf->used = nread + 1; /* one extra for the fake \0 */
-    fr->buf->ptr[fr->buf->used - 1] = '\0';
+    if (c->fr == NULL) {
+        c->fr = zmalloc(sizeof(fastcgiResponse));
+        c->fr->buf = buffer_init();
+        c->fr->format_buf = buffer_init();
+    }
+    c->fr->fd = fd;
+    c->fr->offset = 0;
+    
+    readlen = REDIS_IOBUF_LEN;
+    buffer_prepare_copy(c->fr->buf, readlen);
+    nread = read(fd, c->fr->buf->ptr, readlen);
+    
+    c->fr->buf->used = nread + 1; /* one extra for the fake \0 */
+    c->fr->buf->ptr[c->fr->buf->used - 1] = '\0';
     redisLog(REDIS_NOTICE, "%d", nread);
 
     if (nread == -1) {
@@ -79,16 +85,15 @@ void readQueryFromFcgi(aeEventLoop *el, int fd, void *privdata, int mask)
         }
     } else if (nread == 0) {
         redisLog(REDIS_NOTICE, "fcgi Client closed connection");
-        freeFcgiClient(fr);
+        freeFcgiClient(c->fr);
         return;
     }
     
-    fcgi_demux_response(fr);
-    c->reply_len = WEBSOCKET_set_content( fr->format_buf->ptr, fr->format_buf->used, c->reply_buf, REDIS_IOBUF_LEN );
+    fcgi_demux_response(c->fr);
+    c->reply_len = WEBSOCKET_set_content( c->fr->format_buf->ptr, c->fr->format_buf->used, c->reply_buf, REDIS_IOBUF_LEN );
+    freeFcgiClient(c->fr);
+    c->fr = NULL;
     if (aeCreateFileEvent(server.el, c->fd, AE_WRITABLE,sendReplyToClient, c) == AE_ERR) return;
-    
-    aeDeleteFileEvent(server.el, fd, AE_READABLE);
-    freeFcgiClient(fr);
 }
 
 void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
@@ -119,11 +124,13 @@ void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
 int connectFastcgi(meginxClient *c)
 {
     int fd;
-    redisLog(REDIS_NOTICE, "ae1");
-    fd = anetTcpNonBlockConnect(NULL, "127.0.0.1", 9000);
+    //redisLog(REDIS_NOTICE, "ae1");
+    //fd = anetTcpNonBlockConnect(NULL, "127.0.0.1", 9000);
+    fd = anetUnixGenericConnect(NULL, "/tmp/php-cgi.sock", 1);
     if (fd == -1) {
         redisLog(REDIS_WARNING,"Unable to connect to fastcgi service: %s",
             strerror(errno));
+        close(fd);
         return REDIS_ERR;
     }
     
@@ -148,6 +155,10 @@ void freeClient(meginxClient *c) {
     /* Close socket, unregister events, and remove list of replies and
      * accumulated arguments. */
     redisLog(REDIS_NOTICE, "C %d", c->fd);
+    if (c->fr != NULL) {
+        freeFcgiClient(c->fr);
+        c->fr = NULL;
+    }
     if (c->fd != -1) {
         aeDeleteFileEvent(server.el,c->fd,AE_READABLE);
         aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
@@ -162,7 +173,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(mask);
 
-    readlen = REDIS_IOBUF_LEN;
+    readlen = REDIS_IOBUF_LEN; 
     
     c->querybuf = sdsMakeRoomFor(c->querybuf, readlen);
     nread = read(fd, c->querybuf, readlen);
@@ -187,7 +198,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     }
 
     if (c->connected == 0) {
-        WEBSOCKET_generate_handshake(c->querybuf, c->reply_buf, REDIS_IOBUF_LEN);
+        WEBSOCKET_generate_handshake(c->querybuf, c->handshake_buf, REDIS_IOBUF_LEN);
         c->reply_len = 0;
         if (aeCreateFileEvent(server.el, c->fd, AE_WRITABLE,sendReplyToClient, c) == AE_ERR) return;
         c->connected = 1;
@@ -231,6 +242,14 @@ meginxClient *createClient(int fd) {
     c->querybuf_peak = 0;
     c->connected = 0;
     c->reply_len = 0;
+    memset(c->format_buf, '\0', REDIS_IOBUF_LEN);
+    memset(c->reply_buf, '\0', REDIS_IOBUF_LEN);
+    memset(c->handshake_buf, '\0', 1024);
+    c->fr = zmalloc(sizeof(fastcgiResponse));
+    //c->fr->fd = -1;
+    c->fr->buf = buffer_init();
+    c->fr->offset = 0;
+    c->fr->format_buf = buffer_init();
     return c;
 }
 

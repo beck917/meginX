@@ -79,43 +79,41 @@ void REQUEST_get_header_value( const char *data, const char *requested_key )
 @dst - pointer to char array where the result will be stored,
 @dst_len - size of @dst */
 void REQUEST_get_header_value( const char *data, const char *requested_key, char *dst, unsigned int dst_len ) {
-	char *src = ( char * )malloc( 65535 * sizeof( char ) );
-	char *result_handler;
+	//char *src = ( char * )malloc( 65535 * sizeof( char ) );
+	//char *result_handler;
 	char *result;
 	char *tmp_header_key;
 	int i = 0;
 
-	strncpy( src, data, 65535 );
+	//strncpy( src, data, 65535 );
 
-	tmp_header_key = strstr( ( char* )src, requested_key );
+	tmp_header_key = strstr( ( char* )data, requested_key );
 	if( tmp_header_key == NULL ) {
-                free( src );
-                src = NULL;
 		dst = NULL;
 		return;
 	}
 
-	result_handler = ( char * )malloc( 1024 * sizeof( char ) );
+	//result_handler = ( char * )malloc( 1024 * sizeof( char ) );
 	result = ( char* )calloc( 256, sizeof( char ) );
 
-	strncpy( result_handler, tmp_header_key, 1024 );
-	tmp_header_key = NULL;
+	//strncpy( result_handler, tmp_header_key, 1024 );
+	//tmp_header_key = NULL;
 
-	while( ( result[ i ] = result_handler[ i ] ) != '\015' ) {
-		if( result_handler[ i ] != '\015' ) {
+	while( ( result[ i ] = tmp_header_key[ i ] ) != '\015' ) {
+		if( tmp_header_key[ i ] != '\015' ) {
 			 i++;
 		}
 	}
 	result[ i ]= '\0';
 
-	free( result_handler );
-	result_handler = NULL;
-
 	strncpy( dst, strstr( result, ": " ) + 2, dst_len );
-	free( src );
-	src = NULL;
+        tmp_header_key = NULL;
 	free( result );
 	result = NULL;
+	//free( src );
+	//src = NULL;
+	//free( result_handler );
+	//result_handler = NULL;
 
 }
 
@@ -247,47 +245,37 @@ int WEBSOCKET_set_content( const char *data, int data_length, unsigned char *dst
 @dst_len - size of @dst
 @return - WebSocket frame size */
 int WEBSOCKET_set_content( const char *data, int data_length, unsigned char *dst, const unsigned int dst_len ) {
-	unsigned char *message = ( unsigned char * )malloc( 65535 * sizeof( char ) );
-	int i;
+	int i = 0;
 	int data_start_index;
 
-	message[0] = 129;
+	dst[0] = 129;
 
 	if( data_length <= 125 ) {
-		message[1] = ( unsigned char )data_length;
+		dst[1] = ( unsigned char )data_length;
 		data_start_index = 2;
 	} else if( data_length > 125 && data_length <= 65535 ) {
-		message[1] = 126;
-		message[2] = ( unsigned char )( ( data_length >> 8 ) & 255 );
-		message[3] = ( unsigned char )( ( data_length ) & 255 );
+		dst[1] = 126;
+		dst[2] = ( unsigned char )( ( data_length >> 8 ) & 255 );
+		dst[3] = ( unsigned char )( ( data_length ) & 255 );
 		data_start_index = 4;
 	} else {
-		message[1] = 127;
-		message[2] = ( unsigned char )( ( data_length >> 56 ) & 255 );
-		message[3] = ( unsigned char )( ( data_length >> 48 ) & 255 );
-		message[4] = ( unsigned char )( ( data_length >> 40 ) & 255 );
-		message[5] = ( unsigned char )( ( data_length >> 32 ) & 255 );
-		message[6] = ( unsigned char )( ( data_length >> 24 ) & 255 );
-		message[7] = ( unsigned char )( ( data_length >> 16 ) & 255 );
-		message[8] = ( unsigned char )( ( data_length >> 8 ) & 255 );
-		message[9] = ( unsigned char )( ( data_length ) & 255 );
+		dst[1] = 127;
+		dst[2] = ( unsigned char )( ( data_length >> 56 ) & 255 );
+		dst[3] = ( unsigned char )( ( data_length >> 48 ) & 255 );
+		dst[4] = ( unsigned char )( ( data_length >> 40 ) & 255 );
+		dst[5] = ( unsigned char )( ( data_length >> 32 ) & 255 );
+		dst[6] = ( unsigned char )( ( data_length >> 24 ) & 255 );
+		dst[7] = ( unsigned char )( ( data_length >> 16 ) & 255 );
+		dst[8] = ( unsigned char )( ( data_length >> 8 ) & 255 );
+		dst[9] = ( unsigned char )( ( data_length ) & 255 );
 		data_start_index = 10;
 	}
 
 	for( i = 0; i < data_length; i++ ) {
-		message[ data_start_index + i ] = ( unsigned char )data[i];
+		dst[ data_start_index + i ] = ( unsigned char )data[i];
 	}
 
-	for( i = 0; i < data_length+ data_start_index; i++ ) {
-		dst[i] = ( unsigned char )message[ i ];
-	}
-
-	if( message ) {
-		free( message );
-		message = NULL;
-	}
-
-	return i;
+	return data_start_index + i;
 }
 
 /*

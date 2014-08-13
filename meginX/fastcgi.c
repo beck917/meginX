@@ -17,7 +17,7 @@ struct fcgiParams {
 	"REQUEST_METHOD"   , "POST",
         "QUERY_STRING"     , "input={\"t\":\"test\"}",
 	"SCRIPT_FILENAME"  , "/var/www/origin/www/index.php",
-        "PATH_INFO"        , "/init",
+        "PATH_INFO"        , "/",
 	"SCRIPT_NAME"      , "/index.php",
 	"REQUEST_URI"      , "/init",
         "DOCUMENT_ROOT"    , "/var/www/origin/www",
@@ -108,27 +108,27 @@ int fcgi_demux_response(fastcgiResponse *fr) {
             }
 
             switch(packet.type) {
-            case FCGI_STDOUT:
-                    if (packet.len == 0) break;
-                    char *c;
-                    size_t blen;
-                    if (NULL != (c = buffer_search_string_len(packet.b, CONST_STR_LEN("\r\n\r\n")))) {
-                            blen = packet.b->used - (c - packet.b->ptr) - 4;
-                            packet.b->used = (c - packet.b->ptr) + 3;
-                            c += 4; /* point the the start of the response */
-                    }
-                    buffer_append_string_len(fr->format_buf, c, blen);
-                    break;
-            case FCGI_STDERR:
-                    if (packet.len == 0) break;
+                case FCGI_STDOUT:
+                        if (packet.len == 0) break;
+                        char *c;
+                        size_t blen;
+                        if (NULL != (c = buffer_search_string_len(packet.b, CONST_STR_LEN("\r\n\r\n")))) {
+                                blen = packet.b->used - (c - packet.b->ptr) - 4;
+                                //packet.b->used = (c - packet.b->ptr) + 3;
+                                c += 4; /* point the the start of the response */
+                        }
+                        buffer_append_string_len(fr->format_buf, c, blen);
+                        break;
+                case FCGI_STDERR:
+                        if (packet.len == 0) break;
 
-                    break;
-            case FCGI_END_REQUEST:
+                        break;
+                case FCGI_END_REQUEST:
 
-                    fin = 1;
-                    break;
-            default:
-                    break;
+                        fin = 1;
+                        break;
+                default:
+                        break;
             }
             buffer_free(packet.b);
     }
@@ -207,7 +207,7 @@ int fcgiCreateEnv(buffer *fc_buf, size_t request_id)
     FCGI_BeginRequestRecord beginRecord;
     FCGI_Header header;
     buffer *fcgi_env_buf;
-    char buf[32];
+    //char buf[32];
     
     /* send FCGI_BEGIN_REQUEST */
     fcgi_header(&(beginRecord.header), FCGI_BEGIN_REQUEST, request_id, sizeof(beginRecord.body), 0);
@@ -242,5 +242,6 @@ int fcgiCreateEnv(buffer *fc_buf, size_t request_id)
     fcgi_header(&(header), FCGI_PARAMS, request_id, 0, 0);
     buffer_append_memory(fc_buf, (const char *)&header, sizeof(header));
     fc_buf->used++; /* add virtual \0 */
+    buffer_free(fcgi_env_buf);
 }
 
