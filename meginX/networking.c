@@ -110,9 +110,9 @@ void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
     redisLog(REDIS_NOTICE, "%d",buf->size);
     redisLog(REDIS_NOTICE, "%d",buf->used);
 
-    //FILE *fp = fopen("myfile.bin","wb");
-    //fwrite(fc->buf->ptr, fc->buf->used, 1, fp);
-    //fclose(fp);
+    FILE *fp = fopen("myfile.bin","wb");
+    fwrite(buf->ptr, buf->used, 1, fp);
+    fclose(fp);
     
     aeCreateFileEvent(server.el, fd, AE_READABLE, readQueryFromFcgi, c);
     write(fd, buf->ptr, buf->used);

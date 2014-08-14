@@ -19,9 +19,9 @@ struct fcgiParams {
 	"SCRIPT_FILENAME"  , "/var/www/origin/www/index.php",
         "PATH_INFO"        , "/",
 	"SCRIPT_NAME"      , "/index.php",
-	"REQUEST_URI"      , "/init",
+	"REQUEST_URI"      , "/",
         "DOCUMENT_ROOT"    , "/var/www/origin/www",
-        "DOCUMENT_URI"     , "/index.php/init",
+        "DOCUMENT_URI"     , "/index.php",
 	"SERVER_SOFTWARE"  , "pillX/0.1",
 	"REMOTE_ADDR"      , "127.0.0.1",
 	"REMOTE_PORT"      , "6389",
@@ -29,8 +29,8 @@ struct fcgiParams {
 	"SERVER_PORT"      , "7007",
 	"SERVER_NAME"      , "127.0.0.1",
 	"SERVER_PROTOCOL"  , "HTTP/1.1",
-	"CONTENT_TYPE"     , "",
-	"CONTENT_LENGTH"   , "0",
+        "CONTENT_TYPE"     , "application/x-www-form-urlencoded", 
+	"CONTENT_LENGTH"   , "10",
 };
 
 typedef struct {
@@ -238,10 +238,16 @@ int fcgiCreateEnv(buffer *fc_buf, size_t request_id)
 
     fc_buf->used++; /* add virtual \0 */
     
+    /* start STDIN input post */
+    fcgi_header(&(header), FCGI_STDIN, request_id, 10, 0);
+    buffer_append_memory(fc_buf, (const char *)&header, sizeof(header));
+    buffer_append_memory(fc_buf, "t=test&b=2", 10);
+    
     /* terminate STDIN */
-    fcgi_header(&(header), FCGI_PARAMS, request_id, 0, 0);
+    fcgi_header(&(header), FCGI_STDIN, request_id, 0, 0);
     buffer_append_memory(fc_buf, (const char *)&header, sizeof(header));
     fc_buf->used++; /* add virtual \0 */
+    
     buffer_free(fcgi_env_buf);
 }
 
