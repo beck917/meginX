@@ -502,6 +502,26 @@ char * buffer_search_string_len(buffer *b, const char *needle, size_t len) {
 	return NULL;
 }
 
+char * buffer_search_string_len_skip(buffer *b, const char *needle, size_t len, int skip) {
+	size_t i;
+	if (len == 0) return NULL;
+	if (needle == NULL) return NULL;
+
+	if (b->used < len) return NULL;
+
+	for(i = 0; i < b->used - len; i++) {
+		if (0 == memcmp(b->ptr + i, needle, len)) {
+                    if (skip == 1) {
+                        skip = 0;
+                        continue;
+                    }
+			return b->ptr + i;
+		}
+	}
+
+	return NULL;
+}
+
 buffer *buffer_init_string(const char *str) {
 	buffer *b = buffer_init();
 

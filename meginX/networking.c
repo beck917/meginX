@@ -102,11 +102,22 @@ void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(mask);
     
-    buffer *env;
+    int fce_ret;
     redisLog(REDIS_NOTICE, "ae2");
     buffer *buf = buffer_init();
-
-    fcgiCreateEnv(buf, 1);
+    buffer *fbuf = buffer_init();
+    
+    buffer_append_memory(fbuf, (const char *)c->format_buf, strlen(c->format_buf));
+    fce_ret = fcgiCreateEnv(buf, fbuf, 1200);
+    
+    if (fce_ret < 1) {
+        buffer_free(buf);
+        buffer_free(fbuf);
+        aeDeleteFileEvent(server.el, fd, AE_WRITABLE);
+        close(fd);
+        return;
+    }
+    
     redisLog(REDIS_NOTICE, "%d",buf->size);
     redisLog(REDIS_NOTICE, "%d",buf->used);
 
@@ -118,6 +129,7 @@ void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
     write(fd, buf->ptr, buf->used);
     
     buffer_free(buf);
+    buffer_free(fbuf);
     aeDeleteFileEvent(server.el, fd, AE_WRITABLE);
 }
 

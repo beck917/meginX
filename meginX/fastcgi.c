@@ -16,21 +16,18 @@ struct fcgiParams {
 	"GATEWAY_INTERFACE", "FastCGI/1.0",
 	"REQUEST_METHOD"   , "POST",
         "QUERY_STRING"     , "input={\"t\":\"test\"}",
-	"SCRIPT_FILENAME"  , "/var/www/origin/www/index.php",
-        "PATH_INFO"        , "/",
 	"SCRIPT_NAME"      , "/index.php",
-	"REQUEST_URI"      , "/",
+	"REQUEST_URI"      , "/index.php",
         "DOCUMENT_ROOT"    , "/var/www/origin/www",
         "DOCUMENT_URI"     , "/index.php",
 	"SERVER_SOFTWARE"  , "pillX/0.1",
 	"REMOTE_ADDR"      , "127.0.0.1",
 	"REMOTE_PORT"      , "6389",
 	"SERVER_ADDR"      , "127.0.0.1",
-	"SERVER_PORT"      , "7007",
-	"SERVER_NAME"      , "127.0.0.1",
+	"SERVER_PORT"      , "80",
+	"SERVER_NAME"      , "localhost",
 	"SERVER_PROTOCOL"  , "HTTP/1.1",
         "CONTENT_TYPE"     , "application/x-www-form-urlencoded", 
-	"CONTENT_LENGTH"   , "10",
 };
 
 typedef struct {
@@ -202,7 +199,7 @@ static int fcgi_env_add(buffer *env, const char *key, size_t key_len, const char
 	return 0;
 }
 
-int fcgiCreateEnv(buffer *fc_buf, size_t request_id)
+int fcgiCreateEnv(buffer *fc_buf, buffer *fc_fbuf, size_t request_id)
 {
     FCGI_BeginRequestRecord beginRecord;
     FCGI_Header header;
@@ -224,7 +221,43 @@ int fcgiCreateEnv(buffer *fc_buf, size_t request_id)
     int i;
     int arrlen;
     GET_ARRAY_LEN(fcgi_params, arrlen);
-
+    
+    char *c, *cp, lenstr[32];
+    size_t blen;
+    buffer *tmp_buf = buffer_init();
+    for (i = 0; i < 2; i++) {
+        if (NULL != (c = buffer_search_string_len_skip(fc_fbuf, CONST_STR_LEN("\n"), i))) {
+            switch(i) {
+                case 0:
+                    blen = c - fc_fbuf->ptr;
+                    buffer_append_string_len(tmp_buf, "/var/www/origin/www", strlen("/var/www/origin/www"));
+                    buffer_append_string_len(tmp_buf, fc_fbuf->ptr, blen);
+                    fcgi_env_add(fcgi_env_buf, "SCRIPT_FILENAME", strlen("SCRIPT_FILENAME"), tmp_buf->ptr, strlen(tmp_buf->ptr));
+                    cp = fc_fbuf->ptr + blen;
+                    break;
+                case 1:
+                    buffer_reset(tmp_buf);
+                    blen = c - cp;
+                    cp += 1;
+                    buffer_append_string_len(tmp_buf, cp, blen - 1);
+                    fcgi_env_add(fcgi_env_buf, "PATH_INFO", strlen("PATH_INFO"), tmp_buf->ptr, strlen(tmp_buf->ptr));
+                    
+                    buffer_reset(tmp_buf);
+                    blen = fc_fbuf->used - (c - fc_fbuf->ptr) - 1;
+                    c += 1;
+                    buffer_append_string_len(tmp_buf, c, blen);
+                    LI_ltostr(lenstr, blen);
+                    fcgi_env_add(fcgi_env_buf, "CONTENT_LENGTH", strlen("CONTENT_LENGTH"), lenstr, strlen(lenstr));
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            return 0;
+        }
+    }
+    cp = NULL;c = NULL;
+    
     for (i = 0; i < arrlen; i++) {
         fcgi_env_add(fcgi_env_buf, fcgi_params[i].name, strlen(fcgi_params[i].name), fcgi_params[i].value, strlen(fcgi_params[i].value));
     }
@@ -236,18 +269,20 @@ int fcgiCreateEnv(buffer *fc_buf, size_t request_id)
     fcgi_header(&(header), FCGI_PARAMS, request_id, 0, 0);
     buffer_append_memory(fc_buf, (const char *)&header, sizeof(header));
 
-    fc_buf->used++; /* add virtual \0 */
+    //fc_buf->used++; /* add virtual \0 */
     
     /* start STDIN input post */
-    fcgi_header(&(header), FCGI_STDIN, request_id, 10, 0);
+    fcgi_header(&(header), FCGI_STDIN, request_id, tmp_buf->used, 0);
     buffer_append_memory(fc_buf, (const char *)&header, sizeof(header));
-    buffer_append_memory(fc_buf, "t=test&b=2", 10);
+    buffer_append_memory(fc_buf, tmp_buf->ptr, tmp_buf->used);
     
     /* terminate STDIN */
     fcgi_header(&(header), FCGI_STDIN, request_id, 0, 0);
     buffer_append_memory(fc_buf, (const char *)&header, sizeof(header));
-    fc_buf->used++; /* add virtual \0 */
+    //fc_buf->used++; /* add virtual \0 */
     
     buffer_free(fcgi_env_buf);
+    
+    return 1;
 }
 

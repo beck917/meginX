@@ -145,7 +145,7 @@ typedef struct {
 } FCGI_UnknownTypeRecord;
 
 #define GET_ARRAY_LEN(array,len) {len = (sizeof(array) / sizeof(array[0]));} 
-int fcgiCreateEnv(buffer *fc_buf, size_t request_id);
+int fcgiCreateEnv(buffer *fc_buf, buffer *fc_fbuf, size_t request_id);
 int fcgi_demux_response(fastcgiResponse *fr);
 
 #endif	/* _FASTCGI_H */
