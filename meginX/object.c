@@ -32,6 +32,18 @@
 #include <math.h>
 #include <ctype.h>
 
+robj *createObject(int type, void *ptr) {
+    robj *o = zmalloc(sizeof(*o));
+    o->type = type;
+    o->encoding = REDIS_ENCODING_RAW;
+    o->ptr = ptr;
+    o->refcount = 1;
+
+    /* Set the LRU to the current lruclock (minutes resolution). */
+    o->lru = server.lruclock;
+    return o;
+}
+
 void incrRefCount(robj *o) {
     o->refcount++;
 }
@@ -52,5 +64,53 @@ void decrRefCount(robj *o) {
         zfree(o);
     } else {
         o->refcount--;
+    }
+}
+
+robj *createStringObject(char *ptr, size_t len) {
+    return createObject(REDIS_STRING,sdsnewlen(ptr,len));
+}
+
+/* Convert a long long into a string. Returns the number of
+ * characters needed to represent the number, that can be shorter if passed
+ * buffer length is not enough to store the whole number. */
+int ll2string(char *s, size_t len, long long value) {
+    char buf[32], *p;
+    unsigned long long v;
+    size_t l;
+
+    if (len == 0) return 0;
+    v = (value < 0) ? -value : value;
+    p = buf+31; /* point to the last character */
+    do {
+        *p-- = '0'+(v%10);
+        v /= 10;
+    } while(v);
+    if (value < 0) *p-- = '-';
+    p++;
+    l = 32-(p-buf);
+    if (l+1 > len) l = len-1; /* Make sure it fits, including the nul term */
+    memcpy(s,p,l);
+    s[l] = '\0';
+    return l;
+}
+
+/* Get a decoded version of an encoded object (returned as a new object).
+ * If the object is already raw-encoded just increment the ref count. */
+robj *getDecodedObject(robj *o) {
+    robj *dec;
+
+    if (o->encoding == REDIS_ENCODING_RAW) {
+        incrRefCount(o);
+        return o;
+    }
+    if (o->type == REDIS_STRING && o->encoding == REDIS_ENCODING_INT) {
+        char buf[32];
+
+        ll2string(buf,32,(long)o->ptr);
+        dec = createStringObject(buf,strlen(buf));
+        return dec;
+    } else {
+        redisPanic("Unknown encoding type");
     }
 }

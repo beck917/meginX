@@ -31,6 +31,24 @@ void freeFcgiClient(fastcgiResponse *fr)
     zfree(fr);
 }
 
+void sendSubClinets(meginxClient *c, sds *buf) {
+    c->reply_len = WEBSOCKET_set_content(buf, sdslen(buf), c->reply_buf, REDIS_IOBUF_LEN);
+    sdsfree(buf);
+    write(c->fd, c->reply_buf, c->reply_len);
+    
+    resetClient(c);
+}
+
+void testSubFunction(meginxClient *c) {
+    robj *channel = createObject(REDIS_STRING, sdsnew("new.1"));
+    pubsubSubscribeChannel(c, channel);
+}
+
+void testPubFunction(meginxClient *c) {
+    robj *channel = createObject(REDIS_STRING, sdsnew("new.1"));
+    pubsubPublishMessage(channel, sdsnew("test.new.1"));
+}
+
 void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     meginxClient *c = privdata;
     int nwritten = 0;
@@ -88,6 +106,9 @@ void readQueryFromFcgi(aeEventLoop *el, int fd, void *privdata, int mask)
         freeFcgiClient(c->fr);
         return;
     }
+    
+    testSubFunction(c);
+    testPubFunction(c);
     
     fcgi_demux_response(c->fr);
     c->reply_len = WEBSOCKET_set_content( c->fr->format_buf->ptr, c->fr->format_buf->used, c->reply_buf, REDIS_IOBUF_LEN );
@@ -262,6 +283,8 @@ meginxClient *createClient(int fd) {
     c->fr->buf = buffer_init();
     c->fr->offset = 0;
     c->fr->format_buf = buffer_init();
+    c->pubsub_channels = dictCreate(&setDictType,NULL);
+    c->pubsub_patterns = listCreate();
     return c;
 }
 

@@ -74,20 +74,6 @@
 #define redisAssert(_e) ((_e)?(void)0 : (_redisAssert(#_e,__FILE__,__LINE__),_exit(1)))
 #define redisPanic(_e) _redisPanic(#_e,__FILE__,__LINE__),_exit(1)
 
-/* With multiplexing we need to take per-client state.
- * Clients are taken in a liked list. */
-typedef struct meginxClient {
-    int fd;
-    sds querybuf;
-    int connected;
-	size_t querybuf_peak;   /* Recent (100ms or more) peak of querybuf size */
-    unsigned char reply_buf[REDIS_REPLY_CHUNK_BYTES];
-	char handshake_buf[1024];
-    unsigned char format_buf[REDIS_IOBUF_LEN];
-    size_t reply_len;
-	fastcgiResponse *fr;
-} meginxClient;
-
 /*-----------------------------------------------------------------------------
  * Data types
  *----------------------------------------------------------------------------*/
@@ -107,6 +93,24 @@ typedef struct redisObject {
     int refcount;
     void *ptr;
 } robj;
+
+/* With multiplexing we need to take per-client state.
+ * Clients are taken in a liked list. */
+typedef struct meginxClient {
+    int fd;
+    sds querybuf;
+    int connected;
+	size_t querybuf_peak;   /* Recent (100ms or more) peak of querybuf size */
+    unsigned char reply_buf[REDIS_REPLY_CHUNK_BYTES];
+	char handshake_buf[1024];
+    unsigned char format_buf[REDIS_IOBUF_LEN];
+    size_t reply_len;
+	fastcgiResponse *fr;
+	int argc;
+    robj **argv;
+    dict *pubsub_channels;  /* channels a client is interested in (SUBSCRIBE) */
+    list *pubsub_patterns;  /* patterns a client is interested in (SUBSCRIBE) */
+} meginxClient;
 
 /*-----------------------------------------------------------------------------
  * Global server state
@@ -142,13 +146,6 @@ struct meginxServer {
 	unsigned lruclock:REDIS_LRU_BITS; /* Clock for LRU eviction */
 	int bug_report_start; /* True if bug report header was already logged. */
 };
-
-typedef struct pubsubClient {
-	int argc;
-    robj **argv;
-    dict *pubsub_channels;  /* channels a client is interested in (SUBSCRIBE) */
-    list *pubsub_patterns;  /* patterns a client is interested in (SUBSCRIBE) */
-} pubsubClient;
 
 struct sharedObjectsStruct {
     robj *crlf, *ok, *err, *emptybulk, *czero, *cone, *cnegone, *pong, *space,
@@ -189,6 +186,7 @@ struct sharedObjectsStruct {
  *----------------------------------------------------------------------------*/
 
 extern struct meginxServer server;
+extern dictType setDictType;
 
 /* networking.c -- Networking and Client related operations */
 meginxClient *createClient(int fd);
@@ -201,6 +199,17 @@ typedef struct pubsubPattern {
     meginxClient *client;
     robj *pattern;
 } pubsubPattern;
+
+/* Redis object implementation */
+void decrRefCount(robj *o);
+void incrRefCount(robj *o);
+void freeStringObject(robj *o);
+robj *createObject(int type, void *ptr);
+robj *getDecodedObject(robj *o);
+robj *createStringObject(char *ptr, size_t len);
+
+int pubsubSubscribeChannel(meginxClient *c, robj *channel);
+int pubsubPublishMessage(robj *channel, sds *message);
 
 /* Debugging stuff */
 void _redisAssert(char *estr, char *file, int line);

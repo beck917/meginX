@@ -32,6 +32,107 @@ struct sharedObjectsStruct shared;
 
 struct meginxServer server; /* server global state */
 
+int dictSdsKeyCompare(void *privdata, const void *key1,
+        const void *key2)
+{
+    int l1,l2;
+    DICT_NOTUSED(privdata);
+
+    l1 = sdslen((sds)key1);
+    l2 = sdslen((sds)key2);
+    if (l1 != l2) return 0;
+    return memcmp(key1, key2, l1) == 0;
+}
+
+int dictObjKeyCompare(void *privdata, const void *key1,
+        const void *key2)
+{
+    const robj *o1 = key1, *o2 = key2;
+    return dictSdsKeyCompare(privdata,o1->ptr,o2->ptr);
+}
+
+unsigned int dictObjHash(const void *key) {
+    const robj *o = key;
+    return dictGenHashFunction(o->ptr, sdslen((sds)o->ptr));
+}
+
+void dictRedisObjectDestructor(void *privdata, void *val)
+{
+    DICT_NOTUSED(privdata);
+
+    if (val == NULL) return; /* Values of swapped out keys as set to NULL */
+    decrRefCount(val);
+}
+
+void dictListDestructor(void *privdata, void *val)
+{
+    DICT_NOTUSED(privdata);
+    listRelease((list*)val);
+}
+
+/* Keylist hash table type has unencoded redis objects as keys and
+ * lists as values. It's used for blocking operations (BLPOP) and to
+ * map swapped keys to a list of clients waiting for this keys to be loaded. */
+dictType keylistDictType = {
+    dictObjHash,                /* hash function */
+    NULL,                       /* key dup */
+    NULL,                       /* val dup */
+    dictObjKeyCompare,          /* key compare */
+    dictRedisObjectDestructor,  /* key destructor */
+    dictListDestructor          /* val destructor */
+};
+
+int dictEncObjKeyCompare(void *privdata, const void *key1,
+        const void *key2)
+{
+    robj *o1 = (robj*) key1, *o2 = (robj*) key2;
+    int cmp;
+
+    if (o1->encoding == REDIS_ENCODING_INT &&
+        o2->encoding == REDIS_ENCODING_INT)
+            return o1->ptr == o2->ptr;
+
+    o1 = getDecodedObject(o1);
+    o2 = getDecodedObject(o2);
+    cmp = dictSdsKeyCompare(privdata,o1->ptr,o2->ptr);
+    decrRefCount(o1);
+    decrRefCount(o2);
+    return cmp;
+}
+
+unsigned int dictEncObjHash(const void *key) {
+    robj *o = (robj*) key;
+
+    if (o->encoding == REDIS_ENCODING_RAW) {
+        return dictGenHashFunction(o->ptr, sdslen((sds)o->ptr));
+    } else {
+        if (o->encoding == REDIS_ENCODING_INT) {
+            char buf[32];
+            int len;
+
+            len = ll2string(buf,32,(long)o->ptr);
+            return dictGenHashFunction((unsigned char*)buf, len);
+        } else {
+            unsigned int hash;
+
+            o = getDecodedObject(o);
+            hash = dictGenHashFunction(o->ptr, sdslen((sds)o->ptr));
+            decrRefCount(o);
+            return hash;
+        }
+    }
+}
+
+/* Sets type hash table */
+dictType setDictType = {
+    dictEncObjHash,            /* hash function */
+    NULL,                      /* key dup */
+    NULL,                      /* val dup */
+    dictEncObjKeyCompare,      /* key compare */
+    dictRedisObjectDestructor, /* key destructor */
+    NULL                       /* val destructor */
+};
+
 /*============================ Utility functions ============================ */
 void bugReportStart(void) {
     if (server.bug_report_start == 0) {
@@ -189,6 +290,8 @@ void initServerConfig() {
     server.syslog_enabled = REDIS_DEFAULT_SYSLOG_ENABLED;
     server.maxclients = REDIS_MAX_CLIENTS;
     server.bug_report_start = 0;
+    server.pubsub_channels = dictCreate(&keylistDictType,NULL);
+    server.pubsub_patterns = listCreate();
 }
 
 /* This function gets called every time Redis is entering the

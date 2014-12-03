@@ -35,7 +35,7 @@
 
 /* Subscribe a client to a channel. Returns 1 if the operation succeeded, or
  * 0 if the client was already subscribed to that channel. */
-int pubsubSubscribeChannel(pubsubClient *c, robj *channel) {
+int pubsubSubscribeChannel(meginxClient *c, robj *channel) {
     struct dictEntry *de;
     list *clients = NULL;
     int retval = 0;
@@ -55,16 +55,40 @@ int pubsubSubscribeChannel(pubsubClient *c, robj *channel) {
         }
         listAddNodeTail(clients,c);
     }
-    /* Notify the client */
-    
+
     return retval;
+}
+
+/* Publish a message */
+int pubsubPublishMessage(robj *channel, sds *message) {
+    int receivers = 0;
+    struct dictEntry *de;
+    listNode *ln;
+    listIter li;
+
+    /* Send to clients listening for that channel */
+    de = dictFind(server.pubsub_channels,channel);
+    if (de) {
+        list *list = dictGetVal(de);
+        listNode *ln;
+        listIter li;
+
+        listRewind(list,&li);
+        while ((ln = listNext(&li)) != NULL) {
+            meginxClient *c = ln->value;
+
+            //send to all sub clinets
+            sendSubClinets(c, message);
+            receivers++;
+        }
+    }
+    return receivers;
 }
 
 /*-----------------------------------------------------------------------------
  * Pubsub commands implementation
  *----------------------------------------------------------------------------*/
-
-void subscribeCommand(pubsubClient *c) {
+void subscribeCommand(meginxClient *c) {
     int j;
 
     for (j = 1; j < c->argc; j++)
