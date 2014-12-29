@@ -33,7 +33,7 @@ void freeFcgiClient(fastcgiResponse *fr)
 
 void sendSubClinets(meginxClient *c, sds *buf) {
     c->reply_len = WEBSOCKET_set_content(buf, sdslen(buf), c->reply_buf, REDIS_IOBUF_LEN);
-    sdsfree(buf);
+
     write(c->fd, c->reply_buf, c->reply_len);
     
     resetClient(c);

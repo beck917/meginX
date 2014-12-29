@@ -82,6 +82,7 @@ int pubsubPublishMessage(robj *channel, sds *message) {
             receivers++;
         }
     }
+    sdsfree(message);
     return receivers;
 }
 

@@ -115,6 +115,9 @@ int fcgi_demux_response(fastcgiResponse *fr) {
                                 c += 4; /* point the the start of the response */
                         }
                         buffer_append_string_len(fr->format_buf, c, blen);
+                        
+                        //analyze format buffer get pubsub command
+                        
                         break;
                 case FCGI_STDERR:
                         if (packet.len == 0) break;
