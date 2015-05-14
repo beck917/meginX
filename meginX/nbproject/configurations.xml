@@ -1,30 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configurationDescriptor version="89">
+<configurationDescriptor version="84">
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <logicalFolder name="HeaderFiles" displayName="头文件" projectFiles="true">
       <itemPath>adlist.h</itemPath>
       <itemPath>ae.h</itemPath>
       <itemPath>anet.h</itemPath>
+      <itemPath>base64.h</itemPath>
+      <itemPath>buffer.h</itemPath>
       <itemPath>config.h</itemPath>
+      <itemPath>dict.h</itemPath>
+      <itemPath>fastcgi.h</itemPath>
       <itemPath>fmacros.h</itemPath>
+      <itemPath>md5.h</itemPath>
+      <itemPath>redisassert.h</itemPath>
       <itemPath>sds.h</itemPath>
       <itemPath>server.h</itemPath>
+      <itemPath>sha1.h</itemPath>
+      <itemPath>websocket.h</itemPath>
       <itemPath>zmalloc.h</itemPath>
     </logicalFolder>
     <logicalFolder name="SourceFiles" displayName="源文件" projectFiles="true">
       <itemPath>adlist.c</itemPath>
       <itemPath>ae.c</itemPath>
       <itemPath>ae_epoll.c</itemPath>
-      <itemPath>ae_evport.c</itemPath>
-      <itemPath>ae_kqueue.c</itemPath>
-      <itemPath>ae_select.c</itemPath>
       <itemPath>anet.c</itemPath>
+      <itemPath>base64.c</itemPath>
+      <itemPath>buffer.c</itemPath>
+      <itemPath>dict.c</itemPath>
+      <itemPath>endianconv.c</itemPath>
+      <itemPath>fastcgi.c</itemPath>
       <itemPath>main.c</itemPath>
+      <itemPath>md5.c</itemPath>
       <itemPath>networking.c</itemPath>
+      <itemPath>object.c</itemPath>
+      <itemPath>pubsub.c</itemPath>
       <itemPath>sds.c</itemPath>
+      <itemPath>sha1.c</itemPath>
+      <itemPath>websocket.c</itemPath>
       <itemPath>zmalloc.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ResourceFiles" displayName="资源文件" projectFiles="true">
+      <logicalFolder name="deps" displayName="deps" projectFiles="true">
+      </logicalFolder>
     </logicalFolder>
     <logicalFolder name="TestFiles"
                    displayName="测试文件"
@@ -38,62 +55,23 @@
       <itemPath>Makefile</itemPath>
     </logicalFolder>
   </logicalFolder>
+  <sourceRootList>
+    <Elem>deps</Elem>
+  </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
     <conf name="Debug" type="1">
       <toolsSet>
         <remote-sources-mode>LOCAL_SOURCES</remote-sources-mode>
         <compilerSet>GNU|GNU</compilerSet>
-        <dependencyChecking>true</dependencyChecking>
-        <rebuildPropChanged>false</rebuildPropChanged>
       </toolsSet>
       <compileType>
       </compileType>
-      <item path="adlist.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="adlist.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="ae.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="ae.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="ae_epoll.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="ae_evport.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="ae_kqueue.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="ae_select.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="anet.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="anet.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="config.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="fmacros.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="main.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="networking.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="sds.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="sds.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="server.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="zmalloc.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="zmalloc.h" ex="false" tool="3" flavor2="0">
-      </item>
     </conf>
     <conf name="Release" type="1">
       <toolsSet>
         <remote-sources-mode>LOCAL_SOURCES</remote-sources-mode>
         <compilerSet>default</compilerSet>
-        <dependencyChecking>true</dependencyChecking>
-        <rebuildPropChanged>false</rebuildPropChanged>
       </toolsSet>
       <compileType>
         <cTool>
@@ -109,44 +87,6 @@
           <developmentMode>5</developmentMode>
         </asmTool>
       </compileType>
-      <item path="adlist.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="adlist.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="ae.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="ae.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="ae_epoll.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="ae_evport.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="ae_kqueue.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="ae_select.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="anet.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="anet.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="config.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="fmacros.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="main.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="networking.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="sds.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="sds.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="server.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="zmalloc.c" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="zmalloc.h" ex="false" tool="3" flavor2="0">
-      </item>
     </conf>
   </confs>
 </configurationDescriptor>

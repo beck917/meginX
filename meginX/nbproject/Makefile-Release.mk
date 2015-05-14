@@ -21,8 +21,8 @@ FC=gfortran
 AS=as
 
 # Macros
-CND_PLATFORM=GNU-MacOSX
-CND_DLIB_EXT=dylib
+CND_PLATFORM=None-None
+CND_DLIB_EXT=so
 CND_CONF=Release
 CND_DISTDIR=dist
 CND_BUILDDIR=build
@@ -35,17 +35,24 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
+	${OBJECTDIR}/md5.o \
+	${OBJECTDIR}/pubsub.o \
+	${OBJECTDIR}/base64.o \
+	${OBJECTDIR}/websocket.o \
+	${OBJECTDIR}/buffer.o \
+	${OBJECTDIR}/fastcgi.o \
 	${OBJECTDIR}/adlist.o \
-	${OBJECTDIR}/ae.o \
 	${OBJECTDIR}/ae_epoll.o \
-	${OBJECTDIR}/ae_evport.o \
-	${OBJECTDIR}/ae_kqueue.o \
-	${OBJECTDIR}/ae_select.o \
-	${OBJECTDIR}/anet.o \
-	${OBJECTDIR}/main.o \
+	${OBJECTDIR}/dict.o \
 	${OBJECTDIR}/networking.o \
+	${OBJECTDIR}/endianconv.o \
+	${OBJECTDIR}/ae.o \
+	${OBJECTDIR}/main.o \
+	${OBJECTDIR}/anet.o \
+	${OBJECTDIR}/zmalloc.o \
+	${OBJECTDIR}/object.o \
 	${OBJECTDIR}/sds.o \
-	${OBJECTDIR}/zmalloc.o
+	${OBJECTDIR}/sha1.o
 
 
 # C Compiler Flags
@@ -70,62 +77,97 @@ LDLIBSOPTIONS=
 
 ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/meginx: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.c} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/meginx ${OBJECTFILES} ${LDLIBSOPTIONS}
+	${LINK.c} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/meginx ${OBJECTFILES} ${LDLIBSOPTIONS} 
+
+${OBJECTDIR}/md5.o: md5.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/md5.o md5.c
+
+${OBJECTDIR}/pubsub.o: pubsub.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/pubsub.o pubsub.c
+
+${OBJECTDIR}/base64.o: base64.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/base64.o base64.c
+
+${OBJECTDIR}/websocket.o: websocket.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/websocket.o websocket.c
+
+${OBJECTDIR}/buffer.o: buffer.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/buffer.o buffer.c
+
+${OBJECTDIR}/fastcgi.o: fastcgi.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/fastcgi.o fastcgi.c
 
 ${OBJECTDIR}/adlist.o: adlist.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
 	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/adlist.o adlist.c
 
-${OBJECTDIR}/ae.o: ae.c 
-	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae.o ae.c
-
 ${OBJECTDIR}/ae_epoll.o: ae_epoll.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
 	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae_epoll.o ae_epoll.c
 
-${OBJECTDIR}/ae_evport.o: ae_evport.c 
+${OBJECTDIR}/dict.o: dict.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
-	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae_evport.o ae_evport.c
-
-${OBJECTDIR}/ae_kqueue.o: ae_kqueue.c 
-	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae_kqueue.o ae_kqueue.c
-
-${OBJECTDIR}/ae_select.o: ae_select.c 
-	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae_select.o ae_select.c
-
-${OBJECTDIR}/anet.o: anet.c 
-	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/anet.o anet.c
-
-${OBJECTDIR}/main.o: main.c 
-	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/main.o main.c
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/dict.o dict.c
 
 ${OBJECTDIR}/networking.o: networking.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
 	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/networking.o networking.c
 
-${OBJECTDIR}/sds.o: sds.c 
+${OBJECTDIR}/endianconv.o: endianconv.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
-	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/sds.o sds.c
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/endianconv.o endianconv.c
+
+${OBJECTDIR}/ae.o: ae.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/ae.o ae.c
+
+${OBJECTDIR}/main.o: main.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/main.o main.c
+
+${OBJECTDIR}/anet.o: anet.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/anet.o anet.c
 
 ${OBJECTDIR}/zmalloc.o: zmalloc.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
 	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/zmalloc.o zmalloc.c
+
+${OBJECTDIR}/object.o: object.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/object.o object.c
+
+${OBJECTDIR}/sds.o: sds.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/sds.o sds.c
+
+${OBJECTDIR}/sha1.o: sha1.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/sha1.o sha1.c
 
 # Subprojects
 .build-subprojects:

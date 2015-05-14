@@ -15,13 +15,13 @@ CND_PACKAGE_DIR_Debug=dist/Debug/GNU-Linux-x86/package
 CND_PACKAGE_NAME_Debug=meginx.tar
 CND_PACKAGE_PATH_Debug=dist/Debug/GNU-Linux-x86/package/meginx.tar
 # Release configuration
-CND_PLATFORM_Release=GNU-MacOSX
-CND_ARTIFACT_DIR_Release=dist/Release/GNU-MacOSX
+CND_PLATFORM_Release=None-None
+CND_ARTIFACT_DIR_Release=dist/Release/None-None
 CND_ARTIFACT_NAME_Release=meginx
-CND_ARTIFACT_PATH_Release=dist/Release/GNU-MacOSX/meginx
-CND_PACKAGE_DIR_Release=dist/Release/GNU-MacOSX/package
+CND_ARTIFACT_PATH_Release=dist/Release/None-None/meginx
+CND_PACKAGE_DIR_Release=dist/Release/None-None/package
 CND_PACKAGE_NAME_Release=meginx.tar
-CND_PACKAGE_PATH_Release=dist/Release/GNU-MacOSX/package/meginx.tar
+CND_PACKAGE_PATH_Release=dist/Release/None-None/package/meginx.tar
 #
 # include compiler specific variables
 #
