@@ -31,6 +31,28 @@ void freeFcgiClient(fastcgiResponse *fr)
     zfree(fr);
 }
 
+void freeClient(meginxClient *c) {
+    /* Free the query buffer */
+    sdsfree(c->querybuf);
+    c->querybuf = NULL;
+    /* If this is marked as current client unset it */
+    if (server.current_client == c) server.current_client = NULL;
+    
+    /* Close socket, unregister events, and remove list of replies and
+     * accumulated arguments. */
+    redisLog(REDIS_NOTICE, "C %d", c->fd);
+    if (c->fr != NULL) {
+        freeFcgiClient(c->fr);
+        c->fr = NULL;
+    }
+    if (c->fd != -1) {
+        aeDeleteFileEvent(server.el,c->fd,AE_READABLE);
+        aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
+        close(c->fd);
+    }
+    zfree(c);
+}
+
 void sendSubClinets(meginxClient *c, sds *buf) {
     c->reply_len = WEBSOCKET_set_content(buf, sdslen(buf), c->reply_buf, REDIS_IOBUF_LEN);
 
@@ -47,27 +69,6 @@ void testSubFunction(meginxClient *c) {
 void testPubFunction(meginxClient *c) {
     robj *channel = createObject(REDIS_STRING, sdsnew("new.1"));
     pubsubPublishMessage(channel, sdsnew("test.new.1"));
-}
-
-void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
-    meginxClient *c = privdata;
-    int nwritten = 0;
-    
-    REDIS_NOTUSED(el);
-    REDIS_NOTUSED(mask);
-
-    //char *str = "*1\r\n$1\r\n1\r\n";
-    //nwritten = write(fd, str, strlen(str));
-    if (c->reply_len == 0) {
-        c->reply_len = strlen(c->handshake_buf);
-        nwritten = write(fd, c->handshake_buf, c->reply_len);
-    } else {
-        nwritten = write(fd, c->reply_buf, c->reply_len);
-    }
-
-    resetClient(c);
-    
-    aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
 }
 
 void readQueryFromFcgi(aeEventLoop *el, int fd, void *privdata, int mask) 
@@ -117,7 +118,7 @@ void readQueryFromFcgi(aeEventLoop *el, int fd, void *privdata, int mask)
     if (aeCreateFileEvent(server.el, c->fd, AE_WRITABLE,sendReplyToClient, c) == AE_ERR) return;
 }
 
-void sendRequest(aeEventLoop *el, int fd, void *privdata, int mask)
+void sendFcgiRequest(aeEventLoop *el, int fd, void *privdata, int mask)
 {
     meginxClient *c = privdata;
     REDIS_NOTUSED(el);
@@ -167,7 +168,7 @@ int connectFastcgi(meginxClient *c)
         return REDIS_ERR;
     }
     
-    if (aeCreateFileEvent(server.el,fd,AE_WRITABLE,sendRequest,c) ==
+    if (aeCreateFileEvent(server.el,fd,AE_WRITABLE,sendFcgiRequest,c) ==
             AE_ERR)
     {
         close(fd);
@@ -178,26 +179,25 @@ int connectFastcgi(meginxClient *c)
     return REDIS_OK;
 }
 
-void freeClient(meginxClient *c) {
-    /* Free the query buffer */
-    sdsfree(c->querybuf);
-    c->querybuf = NULL;
-    /* If this is marked as current client unset it */
-    if (server.current_client == c) server.current_client = NULL;
+void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
+    meginxClient *c = privdata;
+    int nwritten = 0;
     
-    /* Close socket, unregister events, and remove list of replies and
-     * accumulated arguments. */
-    redisLog(REDIS_NOTICE, "C %d", c->fd);
-    if (c->fr != NULL) {
-        freeFcgiClient(c->fr);
-        c->fr = NULL;
+    REDIS_NOTUSED(el);
+    REDIS_NOTUSED(mask);
+
+    //char *str = "*1\r\n$1\r\n1\r\n";
+    //nwritten = write(fd, str, strlen(str));
+    if (c->reply_len == 0) {
+        c->reply_len = strlen(c->handshake_buf);
+        nwritten = write(fd, c->handshake_buf, c->reply_len);
+    } else {
+        nwritten = write(fd, c->reply_buf, c->reply_len);
     }
-    if (c->fd != -1) {
-        aeDeleteFileEvent(server.el,c->fd,AE_READABLE);
-        aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
-        close(c->fd);
-    }
-    zfree(c);
+
+    resetClient(c);
+    
+    aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
 }
 
 void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {

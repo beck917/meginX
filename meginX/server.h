@@ -211,6 +211,11 @@ robj *createStringObject(char *ptr, size_t len);
 int pubsubSubscribeChannel(meginxClient *c, robj *channel);
 int pubsubPublishMessage(robj *channel, sds *message);
 
+/* networking.c -- Networking and Client related operations */
+int connectFastcgi(meginxClient *c);
+meginxClient *createClient(int fd);
+void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask);
+
 /* Debugging stuff */
 void _redisAssert(char *estr, char *file, int line);
 void _redisPanic(char *msg, char *file, int line);
